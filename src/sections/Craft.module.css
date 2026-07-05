@@ -1,0 +1,25 @@
+.section {
+  padding-block: var(--sec-pad);
+}
+
+.intro {
+  margin-bottom: clamp(48px, 8vh, 76px);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(16px, 2.4vw, 28px);
+  margin-bottom: 40px;
+}
+
+.outro {
+  color: var(--ink-2);
+}
+
+@media (max-width: 880px) {
+  .cards {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+}

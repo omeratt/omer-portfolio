@@ -1,0 +1,120 @@
+.item {
+  padding-top: clamp(20px, 3vh, 30px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(36px, 6vw, 96px);
+  align-items: center;
+  padding-block: clamp(44px, 7vh, 76px);
+}
+
+.item[data-flip] .visual {
+  order: -1;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.index {
+  color: var(--accent-ink);
+}
+
+.title {
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+}
+
+.blurb {
+  color: var(--ink-2);
+  line-height: 1.8;
+  max-width: 52ch;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.linkWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.tag[data-tag='merged'] {
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+}
+
+/* open is open — the dashed border says "in flight", on purpose */
+.tag[data-tag='open'] {
+  color: var(--ink-2);
+  border: 1px dashed var(--line);
+}
+
+.visual {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 2;
+  padding: clamp(24px, 3.4vw, 44px);
+  border: 1px solid var(--line-soft);
+  border-radius: 22px;
+  background: var(--bg-raise);
+  overflow: hidden;
+  transition:
+    transform 0.55s var(--ease-snap),
+    box-shadow 0.55s ease,
+    border-color 0.4s ease;
+}
+
+.grid:hover .panel {
+  transform: translateY(-5px);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+
+.proves {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.arrow {
+  color: var(--accent-ink);
+  font-family: var(--font-body);
+}
+
+@media (max-width: 820px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 34px;
+    align-items: start;
+  }
+
+  .item[data-flip] .visual {
+    order: 0;
+  }
+}

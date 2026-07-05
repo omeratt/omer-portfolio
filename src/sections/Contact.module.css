@@ -1,0 +1,17 @@
+.section {
+  padding-block: var(--sec-pad) calc(var(--sec-pad) * 0.6);
+}
+
+.pitch {
+  margin-bottom: clamp(44px, 7vh, 64px);
+}
+
+.emailBlock {
+  margin-bottom: 64px;
+}
+
+.socials {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}

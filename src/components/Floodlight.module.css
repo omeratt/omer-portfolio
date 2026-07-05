@@ -1,0 +1,13 @@
+.light {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1400px;
+  height: 1400px;
+  border-radius: 50%;
+  z-index: 60;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(226, 235, 255, 0.052), transparent 62%);
+  mix-blend-mode: screen;
+  will-change: transform;
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Resolve the theme before first paint — no flash, ever.
+      (function () {
+        try {
+          var stored = localStorage.getItem('oa-theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#f6f3ec" />
+    <title>Omer Attias — React Native &amp; Motion Engineer</title>
+    <meta
+      name="description"
+      content="Portfolio of Omer Attias — React Native engineer specializing in motion, animation and native performance. Interfaces with muscle memory."
+    />
+    <meta property="og:title" content="Omer Attias — React Native & Motion Engineer" />
+    <meta
+      property="og:description"
+      content="Interfaces with muscle memory. Motion-first React Native engineering."
+    />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

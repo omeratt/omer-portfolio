@@ -1,0 +1,17 @@
+.court {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.lines {
+  fill: none;
+  stroke: var(--court);
+  stroke-width: 1.5;
+}
+
+.lines * {
+  vector-effect: non-scaling-stroke;
+}

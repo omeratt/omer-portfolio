@@ -1,0 +1,69 @@
+.base {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  will-change: transform;
+}
+
+.text {
+  display: inline-block;
+}
+
+.arrow {
+  display: inline-block;
+  font-size: 0.85em;
+  color: var(--accent-ink);
+  transition: transform 0.3s var(--ease-arc);
+}
+
+.base:hover .arrow {
+  transform: translate(2px, -2px);
+}
+
+/* bordered pill */
+.pill {
+  padding: 13px 24px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.pill:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* underlined text link */
+.line {
+  position: relative;
+  padding-bottom: 2px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.4s var(--ease-snap);
+}
+
+.line:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}

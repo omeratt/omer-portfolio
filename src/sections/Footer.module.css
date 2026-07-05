@@ -1,0 +1,37 @@
+.footer {
+  border-top: 1px solid var(--line-soft);
+  padding-block: 32px;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+}
+
+.heritage {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: help;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--heritage);
+}
+
+@media (max-width: 640px) {
+  .middle {
+    order: 3;
+    flex-basis: 100%;
+  }
+}

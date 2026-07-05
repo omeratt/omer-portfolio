@@ -1,0 +1,55 @@
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+  /* letters ghost out as they pass under the copy — overlap becomes depth */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.16) 0%,
+    rgba(0, 0, 0, 0.45) 42%,
+    #000 60%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.16) 0%,
+    rgba(0, 0, 0, 0.45) 42%,
+    #000 60%
+  );
+}
+
+.stage[data-loaded] .canvas {
+  opacity: 1;
+}
+
+.ghost {
+  position: absolute;
+  top: 50%;
+  right: 12%;
+  transform: translateY(-56%);
+  transition: opacity 0.7s ease;
+}
+
+.stage[data-loaded] .ghost {
+  opacity: 0;
+}
+
+@media (max-width: 760px) {
+  .canvas {
+    /* portrait: solid up top, a ghost layer behind the copy below */
+    -webkit-mask-image: linear-gradient(180deg, #000 20%, rgba(0, 0, 0, 0.15) 36%);
+    mask-image: linear-gradient(180deg, #000 20%, rgba(0, 0, 0, 0.15) 36%);
+  }
+
+  .ghost {
+    top: 22%;
+    right: 50%;
+    transform: translateX(50%) scale(0.72);
+  }
+}

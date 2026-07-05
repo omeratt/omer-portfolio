@@ -1,0 +1,33 @@
+.grid {
+  display: grid;
+  width: max-content;
+}
+
+.grid span {
+  border-radius: 18%;
+  transition: background-color 0.35s ease;
+  transition-delay: var(--d, 0ms);
+}
+
+.ink span {
+  background: var(--ink);
+}
+
+.accent span {
+  background: var(--accent);
+}
+
+.ghost span {
+  background: var(--ink-2);
+  opacity: 0.22;
+}
+
+/* the 2022 homage keeps its original color, verbatim */
+.heritage span {
+  background: var(--heritage);
+}
+
+/* the wave: cells catch fire column by column, then cool back */
+.shimmer:hover span {
+  background-color: var(--accent);
+}

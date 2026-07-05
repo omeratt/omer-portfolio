@@ -1,0 +1,51 @@
+.motif {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  display: block;
+}
+
+.lane {
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.port {
+  fill: var(--ink-2);
+  opacity: 0.5;
+}
+
+.fillInk {
+  fill: var(--ink-2);
+}
+
+.fillAccent {
+  fill: var(--accent);
+}
+
+.fillLine {
+  fill: var(--line);
+}
+
+.sqMuted {
+  fill: var(--line);
+}
+
+.sqAccent {
+  fill: var(--accent);
+  opacity: 0.9;
+}
+
+.strokeInk {
+  stroke: var(--ink-2);
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.strokeAccent {
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}

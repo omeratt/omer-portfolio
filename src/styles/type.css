@@ -1,0 +1,101 @@
+.wrap {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--pad);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.label em {
+  font-style: normal;
+  color: var(--accent-ink);
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: 1.72;
+  color: var(--ink-2);
+  max-width: 58ch;
+}
+
+.lead strong {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+/* the signature: an orange period that behaves like a ball */
+.dot {
+  display: inline-block;
+  width: 0.14em;
+  height: 0.14em;
+  margin-left: 0.08em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, var(--accent-ink), var(--accent));
+  transform-origin: 50% 100%;
+}
+
+.hairline {
+  height: 1px;
+  border: 0;
+  background: var(--line);
+}
+
+/* ---- reveal grammar (initial states; GSAP animates to rest) ---- */
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.09em;
+  margin-block: -0.09em;
+}
+
+[data-line] {
+  display: block;
+  transform: translateY(118%);
+  will-change: transform;
+}
+
+[data-reveal],
+[data-entrance],
+[data-dot] {
+  opacity: 0;
+}
+
+[data-rule] {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+[data-grid-build] span {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-line],
+  [data-rule] {
+    transform: none;
+  }
+
+  [data-reveal],
+  [data-entrance],
+  [data-dot],
+  [data-grid-build] span {
+    opacity: 1;
+  }
+}

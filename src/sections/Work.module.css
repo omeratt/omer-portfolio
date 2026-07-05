@@ -1,0 +1,16 @@
+.section {
+  padding-block: var(--sec-pad);
+}
+
+.section:focus {
+  outline: none;
+}
+
+.sub {
+  margin-bottom: clamp(56px, 9vh, 96px);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}

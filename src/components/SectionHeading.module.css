@@ -1,0 +1,10 @@
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: clamp(42px, 7vh, 76px);
+}
+
+.title {
+  font-size: var(--fs-h2);
+}

@@ -1,0 +1,83 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 22px);
+  flex-wrap: wrap;
+}
+
+.email {
+  position: relative;
+  font-size: clamp(1.45rem, 4.5vw, 2.9rem);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.email::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.45s var(--ease-snap);
+}
+
+.email:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+.copy {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  transition:
+    border-color 0.3s ease,
+    color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.copy:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+
+.toast {
+  position: absolute;
+  left: 0;
+  bottom: -34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.45s var(--ease-arc);
+  pointer-events: none;
+}
+
+.toast[data-on] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toastDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
