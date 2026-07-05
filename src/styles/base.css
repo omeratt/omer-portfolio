@@ -10,20 +10,21 @@
 
 html {
   background: var(--bg);
+  transition: background-color 0.45s ease;
 }
 
 body {
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.65;
-  background: var(--bg);
+  /* transparent so the fixed CourtLines plane (z-index: -1) shows through;
+     the base color lives on <html> above */
+  background: transparent;
   color: var(--ink);
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition:
-    background-color 0.45s ease,
-    color 0.45s ease;
+  transition: color 0.45s ease;
 }
 
 img,

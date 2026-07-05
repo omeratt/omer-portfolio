@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 
 // https://vite.dev/config/
 export default defineConfig({
+  // project page served from https://omeratt.github.io/omer-portfolio/
+  base: '/omer-portfolio/',
   plugins: [react()],
   build: {
     // three.js ships as one lazy-loaded chunk (HeroCanvas) by design —
