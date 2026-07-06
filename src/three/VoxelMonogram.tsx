@@ -4,7 +4,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { buildVoxels, mulberry32, VOXEL_SIZE } from './oaGrid';
 import { simFrame, composeFromState, pointerOnMonogram, type SimCtx } from './voxelSim';
-import { writeFormation, effLoosen, type JourneyState } from './formation';
+import { writeFormation, journeyWeights, clamp01, type JourneyState } from './formation';
+import { buildFormations } from './formations';
 import { createBlastState, igniteBlast, stepBlast, type BlastTrigger } from './blastSim';
 import { useVoxelPaint } from './useVoxelPaint';
 import { usePointerNdc } from './usePointerNdc';
@@ -15,7 +16,7 @@ interface Props {
   reduced: boolean;
   /** entrance gate — assembly starts when the page cascade starts */
   playing: boolean;
-  /** the scroll-driven journey dials (loosen / flatten / contact) */
+  /** the scroll-driven chapter dials */
   journeyRef: RefObject<JourneyState>;
   /** clicks arrive here as NDC; we answer with a shockwave */
   blastRef: RefObject<BlastTrigger | null>;
@@ -25,6 +26,7 @@ const lerp = THREE.MathUtils.lerp;
 
 export default function VoxelMonogram({ theme, reduced, playing, journeyRef, blastRef }: Props) {
   const voxels = useMemo(() => buildVoxels(), []);
+  const forms = useMemo(() => buildFormations(voxels), [voxels]);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   const startRef = useRef(-1);
@@ -37,9 +39,12 @@ export default function VoxelMonogram({ theme, reduced, playing, journeyRef, bla
   const blast = useRef(createBlastState(voxels.length));
   const rng = useRef(mulberry32(1405));
   const camera = useThree((s) => s.camera);
-  // one mutable ctx, refreshed every frame — zero per-frame allocation
   const ctx = useRef<SimCtx>({
-    loosen: 0, flatten: 0, contact: 0, elapsed: 0, time: 0, reduced, pointer: null,
+    weights: journeyWeights({ hero: 1, flat: 0, arc: 0, sphere: 0, contact: 0 }),
+    elapsed: 0,
+    time: 0,
+    reduced,
+    pointer: null,
   });
 
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
@@ -58,8 +63,8 @@ export default function VoxelMonogram({ theme, reduced, playing, journeyRef, bla
     blastRef.current = (ndc) => {
       const group = groupRef.current;
       if (!group || reduced || !assembledRef.current) return;
-      // only shatter a readable letterform — never the loose constellation
-      if (effLoosen(journeyRef.current) > 0.5) return;
+      // only a coherent shape shatters — never the between-chapters cloud
+      if (journeyWeights(journeyRef.current).scatter > 0.5) return;
       const p = pointerOnMonogram(ndc.x, ndc.y, camera, group, blastVec.current);
       if (p) igniteBlast(blast.current, voxels, fieldPos, fieldRot, p, rng.current);
     };
@@ -73,32 +78,38 @@ export default function VoxelMonogram({ theme, reduced, playing, journeyRef, bla
     const group = groupRef.current;
     if (!mesh || !group) return;
 
-    // responsive anchor: right of the copy on wide screens, up top on narrow
+    const j = journeyRef.current;
+    const w = journeyWeights(j);
+
+    // anchor: right of the copy on wide screens (clamped so ultrawide never
+    // parks it mid-text), up top on narrow; recede into depth while reading
     const aspect = size.width / Math.max(1, size.height);
     const portrait = aspect < 0.85;
     const scale = portrait ? Math.min(0.62, aspect * 1.05) : Math.min(0.94, aspect * 0.58);
-    const baseY = portrait ? 2.3 : 0.3;
+    // the ball floats to the top corner, clear of the project copy
+    const baseY = (portrait ? 2.3 : 0.3) + (portrait ? 0 : w.sphere * 1.5);
     group.scale.setScalar(scale);
-    group.position.x = portrait ? 0 : Math.min(3.1, aspect * 1.9);
+    group.position.x = portrait
+      ? 0
+      : Math.min(4.41 * aspect - 3.4 * scale - 0.5, aspect * 1.9);
+    const recede =
+      (portrait ? -2 : -3.4) * (1 - clamp01(j.hero + j.contact)) - w.sphere * 1.3;
+    group.position.z = lerp(group.position.z, recede, 0.06);
 
     const t = clock.elapsedTime;
     if (playing && startRef.current < 0) startRef.current = t;
     const elapsed = reduced ? 99 : startRef.current < 0 ? 0 : t - startRef.current;
     if (elapsed > 1.9) assembledRef.current = true;
 
-    const j = journeyRef.current;
     const c = ctx.current;
-    c.loosen = j.loosen;
-    c.flatten = j.flatten;
-    c.contact = j.contact;
+    c.weights = w;
     c.elapsed = elapsed;
     c.time = t;
     c.reduced = reduced;
 
-    // idle: a slow breath and a lean toward the cursor — both calm down
-    // while the letters travel as a cloud
+    // idle breath + cursor lean — both fade while the cubes travel as a cloud
     const ndc = ndcRef.current;
-    const presence = 1 - effLoosen(j) * 0.7;
+    const presence = 1 - w.scatter * 0.7;
     if (!reduced) {
       group.position.y = baseY + Math.sin(t * 0.6) * 0.06;
       group.rotation.y = lerp(group.rotation.y, (ndc?.x ?? 0) * 0.15 * presence, 0.055);
@@ -107,12 +118,12 @@ export default function VoxelMonogram({ theme, reduced, playing, journeyRef, bla
       group.position.y = baseY;
     }
 
-    // shatter physics owns the frame while it's live — but it magnetizes
-    // to the LIVE formation, so scroll and flatten stay honest mid-flight
+    // shatter physics owns the frame while live — magnetizing to the LIVE
+    // formation, whatever shape the journey currently wants
     const b = blast.current;
     if (b.active) {
       c.pointer = null;
-      writeFormation(voxels, c, fieldPos, fieldRot);
+      writeFormation(voxels, forms, c, fieldPos, fieldRot);
       stepBlast(b, voxels.length, delta, fieldPos, fieldRot);
       composeFromState(mesh, b.pos, b.rot, VOXEL_SIZE);
       return;
@@ -123,7 +134,7 @@ export default function VoxelMonogram({ theme, reduced, playing, journeyRef, bla
         ? pointerOnMonogram(ndc.x, ndc.y, camera, group, pointerVec.current)
         : null;
 
-    simFrame(mesh, voxels, c, VOXEL_SIZE, fieldPos, fieldRot);
+    simFrame(mesh, voxels, forms, c, VOXEL_SIZE, fieldPos, fieldRot);
   });
 
   return (

@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import GridMark from './GridMark';
 import { useMotion } from '../motion/useMotion';
-import type { JourneyState } from '../three/formation';
+import { journeyWeights, type JourneyState } from '../three/formation';
 import type { BlastTrigger } from '../three/blastSim';
 import styles from './VoxelJourney.module.css';
 
@@ -20,22 +20,24 @@ function hasWebGL(): boolean {
   }
 }
 
+/** rises over the first quarter, holds, lets go over the last fifth */
+const plateau = (p: number) => Math.max(0, Math.min(1, Math.min(p / 0.24, (1 - p) / 0.2)));
+
 /**
- * The monogram's stage — fixed behind the whole page, so the letters can
- * travel the scroll: whole in the hero, loosened into a constellation for
- * the ride, flat beside the 2022 homage, whole again at the sign-off.
+ * The monogram's stage — fixed behind the whole page. Each chapter claims
+ * a shape: letters → the flat 2022 grid → a shot-arc → a spinning ball →
+ * letters again. Between chapters the cubes drift as a loose constellation.
  */
 export default function VoxelJourney() {
   const { reduced } = useMotion();
-  const journeyRef = useRef<JourneyState>({ loosen: 0, flatten: 0, contact: 0 });
+  const journeyRef = useRef<JourneyState>({ hero: 1, flat: 0, arc: 0, sphere: 0, contact: 0 });
   const blastRef = useRef<BlastTrigger | null>(null);
   const activeRef = useRef(true);
   const stageRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const webgl = useMemo(hasWebGL, []);
 
-  // click anywhere (links and buttons excluded) → shatter from that point;
-  // the monogram itself decides whether it's currently shatterable
+  // click anywhere (interactive elements excluded) → shatter from that point
   useEffect(() => {
     if (reduced) return;
     const onClick = (e: MouseEvent) => {
@@ -72,24 +74,31 @@ export default function VoxelJourney() {
       const j = journeyRef.current;
       const fade = gsap.quickTo(stage, 'opacity', { duration: 0.35, ease: 'power2' });
       const apply = () => {
+        const w = journeyWeights(j);
         const portrait = window.innerHeight > window.innerWidth * 1.15;
-        let o = 1 - j.loosen * 0.8;
-        o = Math.max(o, 0.42 * j.flatten);
-        o += ((portrait ? 0.55 : 0.9) - o) * j.contact;
-        fade(o);
+        const contactShare = j.contact / Math.max(1e-3, j.hero + j.contact);
+        const lettersO = 1 + ((portrait ? 0.55 : 0.9) - 1) * contactShare;
+        fade(
+          w.letters * lettersO + w.flat * 0.52 + w.arc * 0.36 +
+          w.sphere * 0.32 + w.scatter * 0.2,
+        );
       };
-      ScrollTrigger.create({
-        trigger: '#hero', start: 'top top', end: 'bottom 30%', scrub: true,
-        onUpdate: (st) => { j.loosen = st.progress; apply(); },
-      });
-      ScrollTrigger.create({
-        trigger: '#origin', start: 'top 62%', end: 'bottom 55%', scrub: true,
-        onUpdate: (st) => { j.flatten = Math.sin(st.progress * Math.PI); apply(); },
-      });
-      ScrollTrigger.create({
-        trigger: '#contact', start: 'top 85%', end: 'top 30%', scrub: true,
-        onUpdate: (st) => { j.contact = st.progress; apply(); },
-      });
+      const chapter = (
+        trigger: string,
+        start: string,
+        end: string,
+        write: (p: number) => void,
+      ) =>
+        ScrollTrigger.create({
+          trigger, start, end, scrub: true,
+          onUpdate: (st) => { write(st.progress); apply(); },
+        });
+
+      chapter('#hero', 'top top', 'bottom 42%', (p) => { j.hero = 1 - p; });
+      chapter('#origin', 'top 78%', 'bottom 58%', (p) => { j.flat = plateau(p); });
+      chapter('#craft', 'top 80%', 'bottom 52%', (p) => { j.arc = plateau(p); });
+      chapter('#work', 'top 80%', 'bottom 48%', (p) => { j.sphere = plateau(p); });
+      chapter('#contact', 'top 85%', 'top 28%', (p) => { j.contact = p; });
     },
     { dependencies: [reduced], scope: stageRef },
   );

@@ -1,31 +1,64 @@
 import type { VoxelSeed } from './oaGrid';
+import type { Formations } from './formations';
 
 /**
- * The monogram's journey across the page, as three scroll-driven dials:
- *
- *   loosen   0 letters … 1 a loose constellation drifting beside the story
- *   flatten  0 volume  … 1 the flat 2022 grid (peaks beside the homage)
- *   contact  0 …          1 pulled back together for the sign-off
- *
- * Whole → loosened → flat (the memory) → whole again. The scroll is the story.
+ * The monogram's journey, one dial per chapter (all scroll-driven):
+ * letters in the hero → flat 2022 grid at Origin → a shot-arc at Craft →
+ * a spinning ball at Work → letters again at Contact. Whenever no chapter
+ * claims the cubes, they hold a loose constellation between shapes.
  */
 export interface JourneyState {
-  loosen: number;
-  flatten: number;
+  hero: number;
+  flat: number;
+  arc: number;
+  sphere: number;
   contact: number;
 }
 
-export interface FormationCtx extends JourneyState {
+export interface JourneyWeights {
+  letters: number;
+  flat: number;
+  arc: number;
+  sphere: number;
+  scatter: number;
+  heroPart: number;
+  contactPart: number;
+}
+
+export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/** Normalize the dials into blend weights; the remainder is constellation. */
+export function journeyWeights(j: JourneyState): JourneyWeights {
+  let letters = clamp01(j.hero + j.contact);
+  let flat = clamp01(j.flat);
+  let arc = clamp01(j.arc);
+  let sphere = clamp01(j.sphere);
+  const sum = letters + flat + arc + sphere;
+  if (sum > 1) {
+    letters /= sum;
+    flat /= sum;
+    arc /= sum;
+    sphere /= sum;
+  }
+  return {
+    letters,
+    flat,
+    arc,
+    sphere,
+    scatter: 1 - Math.min(1, sum),
+    heroPart: j.hero,
+    contactPart: j.contact,
+  };
+}
+
+export interface FormationCtx {
+  weights: JourneyWeights;
   /** seconds since the entrance assembly began */
   elapsed: number;
-  /** absolute clock — drives the constellation's slow breath */
+  /** absolute clock — drives the constellation breath, arc wave, ball spin */
   time: number;
   reduced: boolean;
 }
-
-/** How dissolved the letterform effectively is right now (0 = readable). */
-export const effLoosen = (j: JourneyState) =>
-  j.loosen * (1 - j.flatten * 0.88) * (1 - j.contact);
 
 /** Slightly-overshooting settle — each cube lands like it has weight. */
 export function backOut(t: number) {
@@ -34,47 +67,58 @@ export function backOut(t: number) {
   return 1 + (c + 1) * u * u * u + c * u * u;
 }
 
-export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-
 export function settleOf(v: VoxelSeed, ctx: FormationCtx) {
   const a = ctx.reduced ? 1 : clamp01((ctx.elapsed - v.delay) / 0.9);
   return a >= 1 ? 1 : a <= 0 ? 0 : backOut(a);
 }
 
 /**
- * Where every cube wants to be this frame — position and rotation.
- * This is the single source of truth: the live sim renders it directly,
- * and a mid-flight blast magnetizes back to exactly these targets.
+ * Where every cube wants to be this frame. The single source of truth:
+ * the live sim renders it, and a mid-flight blast magnetizes back to it.
  */
 export function writeFormation(
   voxels: VoxelSeed[],
+  forms: Formations,
   ctx: FormationCtx,
   outPos: Float32Array,
   outRot: Float32Array,
 ) {
-  const L = effLoosen(ctx);
-  const flat = ctx.flatten * (1 - ctx.contact);
-  const wob = L * 0.22;
-  const zSquash = 1 - 0.94 * flat;
-  const scatterZ = 1 - 0.85 * flat;
-  const rotDamp = 1 - 0.9 * flat;
+  const w = ctx.weights;
+  const wob = w.scatter * 0.18;
+  const spin = ctx.time * 0.22;
+  const cosS = Math.cos(spin);
+  const sinS = Math.sin(spin);
 
   for (let i = 0; i < voxels.length; i++) {
     const i3 = i * 3;
     const v = voxels[i];
     const settle = settleOf(v, ctx);
-    // entrance scatter at full throw; the journey cloud stays close to home
-    const drift = 1 - settle + L * 0.5 * v.bias;
+    const entrance = 1 - settle;
 
-    // per-cube breath — phases seeded from the cube's own delay/bias
+    // constellation: a tight breathing cloud around home
     const wx = wob === 0 ? 0 : Math.sin(ctx.time * (0.5 + v.bias * 0.4) + v.delay * 31) * wob;
     const wy = wob === 0 ? 0 : Math.cos(ctx.time * (0.42 + v.bias * 0.33) + v.delay * 47) * wob;
+    const scx = v.x + v.sx * 0.22 + wx;
+    const scy = v.y + v.sy * 0.22 + wy;
+    const scz = v.z + v.sz * 0.22;
 
-    outPos[i3] = v.x + v.sx * drift + wx;
-    outPos[i3 + 1] = v.y + v.sy * drift + wy;
-    outPos[i3 + 2] = v.z * zSquash + v.sz * drift * scatterZ;
+    // the ball spins in place; a wave travels along the arc
+    const sphX = forms.sphere[i3] * cosS + forms.sphere[i3 + 2] * sinS;
+    const sphZ = -forms.sphere[i3] * sinS + forms.sphere[i3 + 2] * cosS;
+    const wave = w.arc === 0 ? 0 : Math.sin(ctx.time * 1.7 + forms.arcT[i] * 6.5) * 0.1;
 
-    const r = drift * rotDamp;
+    outPos[i3] =
+      w.letters * v.x + w.flat * forms.flat[i3] + w.arc * forms.arc[i3] +
+      w.sphere * sphX + w.scatter * scx + entrance * v.sx;
+    outPos[i3 + 1] =
+      w.letters * v.y + w.flat * forms.flat[i3 + 1] +
+      w.arc * (forms.arc[i3 + 1] + wave) +
+      w.sphere * forms.sphere[i3 + 1] + w.scatter * scy + entrance * v.sy;
+    outPos[i3 + 2] =
+      w.letters * v.z + w.flat * forms.flat[i3 + 2] + w.arc * forms.arc[i3 + 2] +
+      w.sphere * sphZ + w.scatter * scz + entrance * v.sz;
+
+    const r = clamp01(w.scatter + entrance) * 0.9 + w.sphere * 0.12;
     outRot[i3] = v.rx * r;
     outRot[i3 + 1] = v.ry * r;
     outRot[i3 + 2] = v.rz * r;

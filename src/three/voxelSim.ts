@@ -1,12 +1,7 @@
 import * as THREE from 'three';
 import type { VoxelSeed } from './oaGrid';
-import {
-  writeFormation,
-  settleOf,
-  effLoosen,
-  clamp01,
-  type FormationCtx,
-} from './formation';
+import type { Formations } from './formations';
+import { writeFormation, settleOf, clamp01, type FormationCtx } from './formation';
 
 export interface SimCtx extends FormationCtx {
   /** cursor on the monogram plane, in group space (null = no pointer) */
@@ -22,16 +17,17 @@ const S = new THREE.Vector3();
 export function simFrame(
   mesh: THREE.InstancedMesh,
   voxels: VoxelSeed[],
+  forms: Formations,
   ctx: SimCtx,
   size: number,
   outPos: Float32Array,
   outRot: Float32Array,
 ) {
-  writeFormation(voxels, ctx, outPos, outRot);
+  writeFormation(voxels, forms, ctx, outPos, outRot);
 
-  // cursor push — only once the letterform is readable
+  // cursor push — any coherent shape reacts, the loose cloud doesn't
   const pushable =
-    ctx.pointer && !ctx.reduced && ctx.elapsed > 1.5 && effLoosen(ctx) < 0.45;
+    ctx.pointer && !ctx.reduced && ctx.elapsed > 1.5 && ctx.weights.scatter < 0.45;
 
   for (let i = 0; i < voxels.length; i++) {
     const i3 = i * 3;

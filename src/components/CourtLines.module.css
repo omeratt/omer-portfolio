@@ -6,16 +6,14 @@
   z-index: -1;
 }
 
-.lines {
+.lines,
+.far {
   fill: none;
   stroke: var(--court);
   stroke-width: 1.5;
 }
 
 .far {
-  fill: none;
-  stroke: var(--court);
-  stroke-width: 1.5;
   opacity: 0.55;
 }
 
@@ -28,4 +26,14 @@
 .lines *,
 .far * {
   vector-effect: non-scaling-stroke;
+  transition: stroke 0.9s ease;
+}
+
+/* the chapter you're reading warms its own line */
+.court[data-sec='hero'] .elHero,
+.court[data-sec='origin'] .elOrigin,
+.court[data-sec='craft'] .elCraft,
+.court[data-sec='work'] .elWork,
+.court[data-sec='contact'] .elContact {
+  stroke: var(--court-hot);
 }

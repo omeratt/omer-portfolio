@@ -15,11 +15,16 @@ story, riding the entire scroll:
   as ~256 WebGL voxels that fly in and assemble on load. One data file feeds the
   3D monogram, the flat homage in the Story section, the header mark, and the
   favicon. *Same cells — more depth.*
-- **The letters never leave** ([`src/three/formation.ts`](src/three/formation.ts)):
-  past the hero they loosen into a drifting constellation that keeps you company;
-  beside the 2022 homage they **flatten back into the original flat grid** —
-  the scroll literally travels back in time — and at the contact sign-off they
-  pull whole again. Full circle.
+- **The letters never leave — they become each chapter**
+  ([`src/three/formation.ts`](src/three/formation.ts) +
+  [`formations.ts`](src/three/formations.ts)): beside the 2022 homage they
+  **flatten back into the original flat grid** (the scroll travels back in
+  time); at Craft they unwind into a **shot-arc with a wave running through
+  it** — the cubes literally become the curve the section preaches; at Work
+  they gather into a **slowly spinning ball** floating in the top corner; at
+  the contact sign-off they pull whole again. Between chapters they drift as
+  a loose constellation, receded into depth so the copy always reads clean.
+  Full circle.
 - The cursor bends them gently — and a **click detonates them**: an impulse
   radiates from the click point ([`src/three/blastSim.ts`](src/three/blastSim.ts)),
   cubes tumble through drag-damped free flight, then a magnet wakes in a wave and
