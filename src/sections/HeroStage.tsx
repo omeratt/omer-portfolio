@@ -1,9 +1,10 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import type { RefObject } from 'react';
 import GridMark from '../components/GridMark';
 import { useMotion } from '../motion/useMotion';
+import type { BlastTrigger } from '../three/blastSim';
 import styles from './HeroStage.module.css';
 
 // three.js lives in its own chunk — the copy never waits for it
@@ -26,9 +27,26 @@ function hasWebGL(): boolean {
 export default function HeroStage({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
   const { reduced } = useMotion();
   const disperseRef = useRef(0);
+  const blastRef = useRef<BlastTrigger | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const webgl = useMemo(hasWebGL, []);
+
+  // click anywhere in the hero (links and buttons excluded) → shatter the
+  // monogram from that exact point; it magnetizes home a beat later
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero || reduced) return;
+    const onClick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('a, button')) return;
+      blastRef.current?.({
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: -(e.clientY / window.innerHeight) * 2 + 1,
+      });
+    };
+    hero.addEventListener('click', onClick);
+    return () => hero.removeEventListener('click', onClick);
+  }, [heroRef, reduced]);
 
   useGSAP(
     () => {
@@ -61,7 +79,11 @@ export default function HeroStage({ heroRef }: { heroRef: RefObject<HTMLElement 
       {webgl && (
         <Suspense fallback={null}>
           <div className={styles.canvas}>
-            <HeroCanvas disperseRef={disperseRef} onReady={() => setLoaded(true)} />
+            <HeroCanvas
+              disperseRef={disperseRef}
+              blastRef={blastRef}
+              onReady={() => setLoaded(true)}
+            />
           </div>
         </Suspense>
       )}

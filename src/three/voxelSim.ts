@@ -31,10 +31,13 @@ export function simFrame(
   voxels: VoxelSeed[],
   ctx: SimCtx,
   size: number,
+  outPos: Float32Array,
+  outRot: Float32Array,
 ) {
   const { elapsed, disperse, pointer, reduced } = ctx;
 
   for (let i = 0; i < voxels.length; i++) {
+    const i3 = i * 3;
     const v = voxels[i];
     const a = reduced ? 1 : clamp01((elapsed - v.delay) / 0.9);
     const settle = a >= 1 ? 1 : a <= 0 ? 0 : backOut(a);
@@ -56,11 +59,42 @@ export function simFrame(
       }
     }
 
+    const rx = v.rx * d;
+    const ry = v.ry * d;
+    const rz = v.rz * d;
+    // keep the field state readable — a blast ignites from exactly this frame
+    outPos[i3] = px;
+    outPos[i3 + 1] = py;
+    outPos[i3 + 2] = pz;
+    outRot[i3] = rx;
+    outRot[i3 + 1] = ry;
+    outRot[i3 + 2] = rz;
+
     const s = size * (0.25 + 0.75 * clamp01(settle));
-    E.set(v.rx * d, v.ry * d, v.rz * d);
+    E.set(rx, ry, rz);
     Q.setFromEuler(E);
     P.set(px, py, pz);
     S.set(s, s, s);
+    M.compose(P, Q, S);
+    mesh.setMatrixAt(i, M);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
+/** Compose instance matrices straight from a physics state (blast mode). */
+export function composeFromState(
+  mesh: THREE.InstancedMesh,
+  pos: Float32Array,
+  rot: Float32Array,
+  size: number,
+) {
+  S.set(size, size, size);
+  const count = pos.length / 3;
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    E.set(rot[i3], rot[i3 + 1], rot[i3 + 2]);
+    Q.setFromEuler(E);
+    P.set(pos[i3], pos[i3 + 1], pos[i3 + 2]);
     M.compose(P, Q, S);
     mesh.setMatrixAt(i, M);
   }

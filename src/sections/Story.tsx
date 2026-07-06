@@ -1,5 +1,5 @@
 import SectionHeading from '../components/SectionHeading';
-import MagneticLink from '../components/MagneticLink';
+import ActionLink from '../components/ActionLink';
 import GridMark from '../components/GridMark';
 import { useReveal } from '../motion/useReveal';
 import styles from './Story.module.css';
@@ -50,9 +50,9 @@ export default function Story() {
             <GridMark cell={11} tone="heritage" build className={styles.homageGrid} />
             <figcaption className={styles.caption}>
               <span className="label">2022 — the first build</span>
-              <MagneticLink href="https://omeratt.github.io/intro/" external>
+              <ActionLink href="https://omeratt.github.io/intro/" external>
                 The original, untouched
-              </MagneticLink>
+              </ActionLink>
             </figcaption>
           </figure>
         </div>

@@ -1,6 +1,5 @@
 import type { MouseEventHandler, ReactNode } from 'react';
-import { useMagnetic } from '../motion/useMagnetic';
-import styles from './MagneticLink.module.css';
+import styles from './ActionLink.module.css';
 
 interface Props {
   children: ReactNode;
@@ -12,7 +11,12 @@ interface Props {
   className?: string;
 }
 
-export default function MagneticLink({
+/**
+ * The site's link/button. Hover feedback is instant and CSS-driven —
+ * the underline sweeps in, the pill lifts a hair — no cursor tracking,
+ * no settle lag. Quiet and precise on contact.
+ */
+export default function ActionLink({
   children,
   href,
   onClick,
@@ -20,10 +24,6 @@ export default function MagneticLink({
   external = false,
   className,
 }: Props) {
-  const magnet = useMagnetic<HTMLElement>(0.24);
-  const setNode = (node: HTMLElement | null) => {
-    magnet.current = node;
-  };
   const cls = [styles.base, styles[variant], className].filter(Boolean).join(' ');
 
   const inner = (
@@ -40,7 +40,6 @@ export default function MagneticLink({
   if (href) {
     return (
       <a
-        ref={setNode}
         href={href}
         className={cls}
         onClick={onClick}
@@ -51,7 +50,7 @@ export default function MagneticLink({
     );
   }
   return (
-    <button ref={setNode} type="button" className={cls} onClick={onClick}>
+    <button type="button" className={cls} onClick={onClick}>
       {inner}
     </button>
   );

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import type { RefObject } from 'react';
-import { buildVoxels, VOXEL_SIZE } from './oaGrid';
-import { SCENE } from './palette';
-import { simFrame, pointerOnMonogram } from './voxelSim';
+import { buildVoxels, mulberry32, VOXEL_SIZE } from './oaGrid';
+import { simFrame, composeFromState, pointerOnMonogram } from './voxelSim';
+import { createBlastState, igniteBlast, stepBlast, type BlastTrigger } from './blastSim';
+import { useVoxelPaint } from './useVoxelPaint';
+import { usePointerNdc } from './usePointerNdc';
 import type { Theme } from '../theme/context';
 
 interface Props {
@@ -14,22 +16,26 @@ interface Props {
   playing: boolean;
   /** 0 assembled … 1 scattered, scrubbed by the hero's scroll progress */
   disperseRef: RefObject<number>;
+  /** the hero hands clicks in here as NDC; we answer with a shockwave */
+  blastRef: RefObject<BlastTrigger | null>;
 }
 
 const lerp = THREE.MathUtils.lerp;
 
-export default function VoxelMonogram({ theme, reduced, playing, disperseRef }: Props) {
+export default function VoxelMonogram({ theme, reduced, playing, disperseRef, blastRef }: Props) {
   const voxels = useMemo(() => buildVoxels(), []);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   const startRef = useRef(-1);
-  const ndcRef = useRef<{ x: number; y: number } | null>(null);
+  const assembledRef = useRef(false);
+  const ndcRef = usePointerNdc();
   const pointerVec = useRef(new THREE.Vector3());
-  const paint = useRef({
-    cube: new THREE.Color(SCENE[theme].cube),
-    orange: new THREE.Color(SCENE[theme].orange),
-    dirty: true,
-  });
+  const blastVec = useRef(new THREE.Vector3());
+  const fieldPos = useMemo(() => new Float32Array(voxels.length * 3), [voxels]);
+  const fieldRot = useMemo(() => new Float32Array(voxels.length * 3), [voxels]);
+  const blast = useRef(createBlastState(voxels.length));
+  const rng = useRef(mulberry32(1405));
+  const camera = useThree((s) => s.camera);
 
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   const material = useMemo(
@@ -41,25 +47,22 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef }: 
     material.dispose();
   }, [geometry, material]);
 
-  const targetCube = useMemo(() => new THREE.Color(SCENE[theme].cube), [theme]);
-  const targetOrange = useMemo(() => new THREE.Color(SCENE[theme].orange), [theme]);
-  useEffect(() => {
-    paint.current.dirty = true;
-  }, [theme]);
+  useVoxelPaint(meshRef, voxels, theme);
 
   useEffect(() => {
-    if (!window.matchMedia('(pointer: fine)').matches) return;
-    const onMove = (e: PointerEvent) => {
-      ndcRef.current = {
-        x: (e.clientX / window.innerWidth) * 2 - 1,
-        y: -(e.clientY / window.innerHeight) * 2 + 1,
-      };
+    blastRef.current = (ndc) => {
+      const group = groupRef.current;
+      if (!group || reduced || !assembledRef.current) return;
+      if (disperseRef.current > 0.5) return; // mostly scrolled away — nothing to shatter
+      const p = pointerOnMonogram(ndc.x, ndc.y, camera, group, blastVec.current);
+      if (p) igniteBlast(blast.current, voxels, fieldPos, fieldRot, p, rng.current);
     };
-    window.addEventListener('pointermove', onMove, { passive: true });
-    return () => window.removeEventListener('pointermove', onMove);
-  }, []);
+    return () => {
+      blastRef.current = null;
+    };
+  }, [blastRef, camera, reduced, voxels, fieldPos, fieldRot, disperseRef]);
 
-  useFrame(({ clock, camera, size }, delta) => {
+  useFrame(({ clock, size }, delta) => {
     const mesh = meshRef.current;
     const group = groupRef.current;
     if (!mesh || !group) return;
@@ -68,8 +71,6 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef }: 
     // (the canvas mask ghosts whatever passes under the text), above it on narrow
     const aspect = size.width / Math.max(1, size.height);
     const portrait = aspect < 0.85;
-    // portrait: letters rise behind the copy from the top of the viewport —
-    // the stage mask ghosts whatever passes behind the text
     const scale = portrait ? Math.min(0.62, aspect * 1.05) : Math.min(0.94, aspect * 0.58);
     const baseY = portrait ? 2.3 : 0.3;
     group.scale.setScalar(scale);
@@ -78,6 +79,7 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef }: 
     const t = clock.elapsedTime;
     if (playing && startRef.current < 0) startRef.current = t;
     const elapsed = reduced ? 99 : startRef.current < 0 ? 0 : t - startRef.current;
+    if (elapsed > 1.9) assembledRef.current = true;
 
     // idle: a slow breath and a lean toward the cursor
     const ndc = ndcRef.current;
@@ -87,6 +89,14 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef }: 
       group.rotation.x = lerp(group.rotation.x, -(ndc?.y ?? 0) * 0.1, 0.055);
     } else {
       group.position.y = baseY;
+    }
+
+    // shatter physics owns the frame while it's live
+    const b = blast.current;
+    if (b.active) {
+      stepBlast(b, voxels, delta, disperseRef.current);
+      composeFromState(mesh, b.pos, b.rot, VOXEL_SIZE);
+      return;
     }
 
     const pointer =
@@ -99,26 +109,9 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef }: 
       voxels,
       { elapsed, disperse: disperseRef.current, pointer, reduced },
       VOXEL_SIZE,
+      fieldPos,
+      fieldRot,
     );
-
-    // theme swap: instance colors glide to the new palette
-    const p = paint.current;
-    if (p.dirty) {
-      const k = Math.min(1, delta * 5);
-      p.cube.lerp(targetCube, k);
-      p.orange.lerp(targetOrange, k);
-      const done =
-        Math.abs(p.cube.r - targetCube.r) + Math.abs(p.cube.g - targetCube.g) < 0.004;
-      if (done) {
-        p.cube.copy(targetCube);
-        p.orange.copy(targetOrange);
-        p.dirty = false;
-      }
-      for (let i = 0; i < voxels.length; i++) {
-        mesh.setColorAt(i, voxels[i].orange ? p.orange : p.cube);
-      }
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    }
   });
 
   return (

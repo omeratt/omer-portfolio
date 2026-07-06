@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import MagneticLink from '../components/MagneticLink';
+import ActionLink from '../components/ActionLink';
 import NetMotif from './motifs/NetMotif';
 import PlayMotif from './motifs/PlayMotif';
 import PaginationMotif from './motifs/PaginationMotif';
@@ -34,9 +34,9 @@ export default function WorkItem({ project, flip }: { project: Project; flip: bo
           <div className={styles.links} data-reveal="">
             {project.links.map((link) => (
               <span key={link.href} className={styles.linkWrap}>
-                <MagneticLink href={link.href} external>
+                <ActionLink href={link.href} external>
                   {link.label}
-                </MagneticLink>
+                </ActionLink>
                 {link.tag && (
                   <span className={styles.tag} data-tag={link.tag}>
                     {link.tag}
