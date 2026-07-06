@@ -45,6 +45,12 @@ const ROT_DRAG = 1.1; // cubes keep tumbling a little longer than they travel
 const STIFF = 46; // return-spring stiffness
 const DAMP = 7.4; // underdamped on purpose — one soft overshoot, then rest
 const MAX_DT = 1 / 30; // background tabs must not explode the integration
+// formation targets breathe (wobble / wave / spin), so a strict error check
+// would chase them forever — settle on "close enough", and always hand the
+// frame back to the live sim within a hard time cap
+const SETTLE_ERR = 6e-3;
+const SETTLE_SPEED = 4e-3;
+const MAX_FLIGHT = HOLD + 3.2;
 
 /** Re-igniting mid-flight is allowed: the new impulse rides the current state. */
 export function igniteBlast(
@@ -125,7 +131,7 @@ export function stepBlast(
       const err = ex * ex + ey * ey + ez * ez;
       const speed =
         s.vel[i3] * s.vel[i3] + s.vel[i3 + 1] * s.vel[i3 + 1] + s.vel[i3 + 2] * s.vel[i3 + 2];
-      if (err > 1e-4 || speed > 4e-4) done = false;
+      if (err > SETTLE_ERR || speed > SETTLE_SPEED) done = false;
     } else {
       s.vel[i3] *= drag;
       s.vel[i3 + 1] *= drag;
@@ -143,6 +149,6 @@ export function stepBlast(
     s.rot[i3 + 2] += s.rotVel[i3 + 2] * dt;
   }
 
-  if (done) s.active = false;
+  if (done || s.t >= MAX_FLIGHT) s.active = false;
   return s.active;
 }

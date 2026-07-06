@@ -83,22 +83,35 @@ export default function VoxelJourney() {
           w.sphere * 0.32 + w.scatter * 0.2,
         );
       };
+      // real elements, never selector strings — the useGSAP scope would
+      // resolve strings inside the stage div, silently breaking every trigger
       const chapter = (
-        trigger: string,
+        id: string,
         start: string,
         end: string,
         write: (p: number) => void,
-      ) =>
+      ) => {
+        const trigger = document.getElementById(id);
+        if (!trigger) return;
         ScrollTrigger.create({
           trigger, start, end, scrub: true,
+          // onRefresh too: resizes and late layout shifts must never leave
+          // a stale dial behind
           onUpdate: (st) => { write(st.progress); apply(); },
+          onRefresh: (st) => { write(st.progress); apply(); },
         });
+      };
 
-      chapter('#hero', 'top top', 'bottom 42%', (p) => { j.hero = 1 - p; });
-      chapter('#origin', 'top 78%', 'bottom 58%', (p) => { j.flat = plateau(p); });
-      chapter('#craft', 'top 80%', 'bottom 52%', (p) => { j.arc = plateau(p); });
-      chapter('#work', 'top 80%', 'bottom 48%', (p) => { j.sphere = plateau(p); });
-      chapter('#contact', 'top 85%', 'top 28%', (p) => { j.contact = p; });
+      chapter('hero', 'top top', 'bottom 42%', (p) => { j.hero = 1 - p; });
+      chapter('origin', 'top 78%', 'bottom 58%', (p) => { j.flat = plateau(p); });
+      chapter('craft', 'top 80%', 'bottom 52%', (p) => { j.arc = plateau(p); });
+      chapter('work', 'top 80%', 'bottom 48%', (p) => { j.sphere = plateau(p); });
+      chapter('contact', 'top 85%', 'top 28%', (p) => { j.contact = p; });
+
+      if (import.meta.env.DEV) {
+        // live journey dials for debugging: window.__oaJourney
+        (window as unknown as { __oaJourney?: JourneyState }).__oaJourney = j;
+      }
     },
     { dependencies: [reduced], scope: stageRef },
   );
