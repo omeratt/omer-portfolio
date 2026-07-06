@@ -58,10 +58,14 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       scrollTo: (selector: string) => {
         const el = document.querySelector<HTMLElement>(selector);
         if (!el) return;
+        // land on the section's heading, not its breathing room — skip most
+        // of the top padding so the arrival feels placed, not approximate
+        const pad = parseFloat(getComputedStyle(el).paddingTop) || 0;
+        const offset = pad > 100 ? pad - 104 : -84;
         if (lenis) {
-          lenis.scrollTo(el, { offset: -84, duration: 1.25, easing: easeExpoOut });
+          lenis.scrollTo(el, { offset, duration: 1.25, easing: easeExpoOut });
         } else {
-          el.scrollIntoView({ block: 'start' });
+          window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + offset);
         }
       },
     }),

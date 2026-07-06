@@ -1,0 +1,45 @@
+.rail {
+  position: fixed;
+  left: 30px;
+  top: calc(var(--header-h) + 46px);
+  bottom: 46px;
+  width: 7px;
+  z-index: 40;
+  pointer-events: none;
+  animation: railIn 1s var(--ease-snap) 1.5s both;
+}
+
+.rail::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-soft);
+}
+
+.ball {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, var(--accent-ink), var(--accent));
+}
+
+@keyframes railIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1120px) {
+  .rail {
+    display: none;
+  }
+}

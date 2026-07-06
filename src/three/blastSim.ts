@@ -84,15 +84,17 @@ export function igniteBlast(
 }
 
 /**
- * One integration step. `disperse` keeps the return target honest while the
- * user scrolls: cubes magnetize to wherever the field currently wants them.
+ * One integration step. The caller hands in live formation targets each
+ * frame, so cubes magnetize to wherever the journey currently wants them —
+ * scrolled, flattened, or reassembled — never to a stale home.
  * Returns false once every cube has settled (state flips inactive).
  */
 export function stepBlast(
   s: BlastState,
-  voxels: VoxelSeed[],
+  count: number,
   rawDt: number,
-  disperse: number,
+  targetPos: Float32Array,
+  targetRot: Float32Array,
 ): boolean {
   const dt = Math.min(rawDt, MAX_DT);
   s.t += dt;
@@ -103,20 +105,20 @@ export function stepBlast(
   const sdamp = Math.exp(-DAMP * dt);
   let done = s.returning;
 
-  for (let i = 0; i < voxels.length; i++) {
+  for (let i = 0; i < count; i++) {
     const i3 = i * 3;
-    const v = voxels[i];
     if (s.returning && s.t - HOLD >= s.delay[i]) {
-      const df = disperse * v.bias;
-      const tx = v.x + v.sx * df;
-      const ty = v.y + v.sy * df;
-      const tz = v.z + v.sz * df;
+      const tx = targetPos[i3];
+      const ty = targetPos[i3 + 1];
+      const tz = targetPos[i3 + 2];
       s.vel[i3] = (s.vel[i3] + (tx - s.pos[i3]) * spring) * sdamp;
       s.vel[i3 + 1] = (s.vel[i3 + 1] + (ty - s.pos[i3 + 1]) * spring) * sdamp;
       s.vel[i3 + 2] = (s.vel[i3 + 2] + (tz - s.pos[i3 + 2]) * spring) * sdamp;
-      s.rotVel[i3] = (s.rotVel[i3] + (v.rx * df - s.rot[i3]) * spring * 0.8) * sdamp;
-      s.rotVel[i3 + 1] = (s.rotVel[i3 + 1] + (v.ry * df - s.rot[i3 + 1]) * spring * 0.8) * sdamp;
-      s.rotVel[i3 + 2] = (s.rotVel[i3 + 2] + (v.rz * df - s.rot[i3 + 2]) * spring * 0.8) * sdamp;
+      s.rotVel[i3] = (s.rotVel[i3] + (targetRot[i3] - s.rot[i3]) * spring * 0.8) * sdamp;
+      s.rotVel[i3 + 1] =
+        (s.rotVel[i3 + 1] + (targetRot[i3 + 1] - s.rot[i3 + 1]) * spring * 0.8) * sdamp;
+      s.rotVel[i3 + 2] =
+        (s.rotVel[i3 + 2] + (targetRot[i3 + 2] - s.rot[i3 + 2]) * spring * 0.8) * sdamp;
       const ex = tx - s.pos[i3];
       const ey = ty - s.pos[i3 + 1];
       const ez = tz - s.pos[i3 + 2];

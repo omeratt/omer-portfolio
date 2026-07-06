@@ -2,10 +2,12 @@ import SectionHeading from '../components/SectionHeading';
 import WorkItem from './WorkItem';
 import { PROJECTS } from '../data/projects';
 import { useReveal } from '../motion/useReveal';
+import { useDrift } from '../motion/useDrift';
 import styles from './Work.module.css';
 
 export default function Work() {
   const ref = useReveal<HTMLElement>();
+  useDrift(ref);
 
   return (
     <section
@@ -23,8 +25,7 @@ export default function Work() {
           id="work-title"
         />
         <p className={`lead ${styles.sub}`} data-reveal="">
-          Four things I built because I needed them to exist. No download counts, no
-          badge walls — each one proves a different muscle.
+          Four things I needed to exist. Each one proves a different muscle.
         </p>
         <ul className={styles.list}>
           {PROJECTS.map((project, i) => (

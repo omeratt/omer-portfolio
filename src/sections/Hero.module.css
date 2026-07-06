@@ -35,14 +35,6 @@
 
 .lead {
   max-width: 44ch;
-  margin-bottom: 44px;
-}
-
-.ctas {
-  display: flex;
-  align-items: center;
-  gap: 30px;
-  flex-wrap: wrap;
 }
 
 .hint {
@@ -102,9 +94,5 @@
 
   .inner {
     padding-bottom: 118px;
-  }
-
-  .lead {
-    margin-bottom: 34px;
   }
 }

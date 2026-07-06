@@ -34,6 +34,13 @@ canvas {
   max-width: 100%;
 }
 
+/* content rides above the fixed voxel stage (z-index: 0) */
+main,
+footer {
+  position: relative;
+  z-index: 1;
+}
+
 button,
 input {
   font: inherit;

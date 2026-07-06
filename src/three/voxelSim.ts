@@ -1,23 +1,16 @@
 import * as THREE from 'three';
 import type { VoxelSeed } from './oaGrid';
+import {
+  writeFormation,
+  settleOf,
+  effLoosen,
+  clamp01,
+  type FormationCtx,
+} from './formation';
 
-/** Slightly-overshooting settle — each cube lands like it has weight. */
-function backOut(t: number) {
-  const c = 1.70158 * 0.82;
-  const u = t - 1;
-  return 1 + (c + 1) * u * u * u + c * u * u;
-}
-
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-
-export interface SimCtx {
-  /** seconds since assembly started (0 = fully scattered) */
-  elapsed: number;
-  /** 0 assembled … 1 re-scattered by scroll */
-  disperse: number;
+export interface SimCtx extends FormationCtx {
   /** cursor on the monogram plane, in group space (null = no pointer) */
   pointer: THREE.Vector3 | null;
-  reduced: boolean;
 }
 
 const M = new THREE.Matrix4();
@@ -34,46 +27,32 @@ export function simFrame(
   outPos: Float32Array,
   outRot: Float32Array,
 ) {
-  const { elapsed, disperse, pointer, reduced } = ctx;
+  writeFormation(voxels, ctx, outPos, outRot);
+
+  // cursor push — only once the letterform is readable
+  const pushable =
+    ctx.pointer && !ctx.reduced && ctx.elapsed > 1.5 && effLoosen(ctx) < 0.45;
 
   for (let i = 0; i < voxels.length; i++) {
     const i3 = i * 3;
-    const v = voxels[i];
-    const a = reduced ? 1 : clamp01((elapsed - v.delay) / 0.9);
-    const settle = a >= 1 ? 1 : a <= 0 ? 0 : backOut(a);
-    const d = 1 - settle + disperse * v.bias;
 
-    let px = v.x + v.sx * d;
-    let py = v.y + v.sy * d;
-    let pz = v.z + v.sz * d;
-
-    // cursor push — only once the letters have settled
-    if (pointer && d < 0.05 && d > -0.2) {
-      const dx = px - pointer.x;
-      const dy = py - pointer.y;
+    if (pushable && ctx.pointer) {
+      const dx = outPos[i3] - ctx.pointer.x;
+      const dy = outPos[i3 + 1] - ctx.pointer.y;
       const f = Math.exp(-(dx * dx + dy * dy) / 1.4) * 0.36;
       if (f > 0.004) {
-        px += dx * f;
-        py += dy * f;
-        pz += f * 0.5;
+        // written back so a blast ignites from exactly what's on screen
+        outPos[i3] += dx * f;
+        outPos[i3 + 1] += dy * f;
+        outPos[i3 + 2] += f * 0.5;
       }
     }
 
-    const rx = v.rx * d;
-    const ry = v.ry * d;
-    const rz = v.rz * d;
-    // keep the field state readable — a blast ignites from exactly this frame
-    outPos[i3] = px;
-    outPos[i3 + 1] = py;
-    outPos[i3 + 2] = pz;
-    outRot[i3] = rx;
-    outRot[i3 + 1] = ry;
-    outRot[i3 + 2] = rz;
-
+    const settle = settleOf(voxels[i], ctx);
     const s = size * (0.25 + 0.75 * clamp01(settle));
-    E.set(rx, ry, rz);
+    E.set(outRot[i3], outRot[i3 + 1], outRot[i3 + 2]);
     Q.setFromEuler(E);
-    P.set(px, py, pz);
+    P.set(outPos[i3], outPos[i3 + 1], outPos[i3 + 2]);
     S.set(s, s, s);
     M.compose(P, Q, S);
     mesh.setMatrixAt(i, M);

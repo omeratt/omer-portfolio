@@ -1,13 +1,11 @@
 import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import HeroStage from './HeroStage';
-import ActionLink from '../components/ActionLink';
 import { useMotion } from '../motion/useMotion';
 import styles from './Hero.module.css';
 
 export default function Hero() {
-  const { ready, reduced, scrollTo } = useMotion();
+  const { ready, reduced } = useMotion();
   const sectionRef = useRef<HTMLElement>(null);
 
   useGSAP(
@@ -32,13 +30,12 @@ export default function Hero() {
         { yPercent: 118, y: 0 },
         { yPercent: 0, y: 0, duration: 1.2, stagger: 0.12 },
         0.15,
-      )
-        .fromTo(
-          items,
-          { y: 26, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 1, stagger: 0.09 },
-          0.5,
-        );
+      ).fromTo(
+        items,
+        { y: 26, autoAlpha: 0 },
+        { y: 0, autoAlpha: 1, duration: 1, stagger: 0.09 },
+        0.5,
+      );
       if (dot) {
         tl.fromTo(
           dot,
@@ -65,47 +62,31 @@ export default function Hero() {
     { dependencies: [ready, reduced], scope: sectionRef },
   );
 
-  const go = (target: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    scrollTo(target);
-  };
-
   return (
-    <section ref={sectionRef} className={styles.hero} aria-label="Introduction">
-      <HeroStage heroRef={sectionRef} />
+    <section id="hero" ref={sectionRef} className={styles.hero} aria-label="Introduction">
       <div className={`wrap ${styles.inner}`}>
         <p className={`label ${styles.eyebrow}`} data-entrance="">
-          Omer Attias — React Native · Motion · Native
+          Omer Attias · Mobile &amp; Motion
         </p>
         <h1 className={`display ${styles.title}`}>
           <span className="mask">
-            <span data-line="">Interfaces with</span>
+            <span data-line="">I build interfaces</span>
           </span>
           <span className="mask">
             <span data-line="">
-              muscle memory
+              you can feel
               <span className="dot" data-dot="" aria-hidden="true" />
             </span>
           </span>
         </h1>
         <p className={`lead ${styles.lead}`} data-entrance="">
-          I build React Native interfaces where motion is engineered, not decorated —
-          springs tuned by hand, haptics timed to the millisecond, sixty frames per
-          second treated as a contract.
+          Twenty years of code, one obsession — how things feel.
         </p>
-        <div className={styles.ctas} data-entrance="">
-          <ActionLink variant="pill" href="#work" onClick={go('#work')}>
-            See the work
-          </ActionLink>
-          <ActionLink variant="line" href="#contact" onClick={go('#contact')}>
-            Say hello
-          </ActionLink>
-        </div>
       </div>
       <div className={styles.hint} data-entrance="" data-hint="" aria-hidden="true">
         <span className={styles.dribble} />
         <span className={styles.floor} />
-        <span className={styles.hintLabel}>scroll</span>
+        <span className={styles.hintLabel}>the story</span>
       </div>
     </section>
   );

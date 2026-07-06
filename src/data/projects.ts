@@ -23,10 +23,10 @@ export const PROJECTS: Project[] = [
     index: '01',
     title: 'rn-net-vision',
     blurb:
-      'A real-time network debugger for React Native — a Chrome-DevTools-style ' +
-      'dashboard fed by native Swift & Kotlin interceptors over a WebSocket bridge, ' +
-      'wired into Metro. Built solo to fill the hole Flipper left, and it works where ' +
-      'nothing else does: SSL-pinned enterprise apps.',
+      'A real-time network debugger for mobile apps — a Chrome-DevTools-style ' +
+      'dashboard fed by native Swift & Kotlin interceptors over a WebSocket bridge. ' +
+      'Built solo to fill the hole Flipper left, and it works where nothing else ' +
+      'does: SSL-pinned enterprise apps.',
     proves: 'Native depth most JS engineers never reach',
     motif: 'net',
     links: [
@@ -41,7 +41,7 @@ export const PROJECTS: Project[] = [
     blurb:
       'A task app for ADHD brains, designed from lived experience. Tasks feel light, ' +
       'wins feel loud, and Playground Mode turns organizing your day into something ' +
-      'you want to touch — every spring of it Reanimated 3.',
+      'you want to touch — every spring hand-tuned.',
     proves: 'Empathy, shipped with polish',
     motif: 'play',
     links: [
@@ -54,9 +54,9 @@ export const PROJECTS: Project[] = [
     index: '03',
     title: 'reanimated-pagination',
     blurb:
-      'A published pagination library for React Native — fade, slide and liquid ' +
-      'indicator modes, fully worklet-driven so the UI thread never waits on ' +
-      'JavaScript. Animation craft, packaged as an API other engineers can hold.',
+      'A published pagination library — fade, slide and liquid indicator modes, ' +
+      'everything running on the UI thread so nothing ever waits on JavaScript. ' +
+      'Animation craft, packaged as an API other engineers can hold.',
     proves: 'Performance-minded animation, as a product',
     motif: 'pagination',
     links: [

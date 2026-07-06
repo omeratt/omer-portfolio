@@ -2,10 +2,12 @@ import SectionHeading from '../components/SectionHeading';
 import ActionLink from '../components/ActionLink';
 import CopyEmail from '../components/CopyEmail';
 import { useReveal } from '../motion/useReveal';
+import { useDrift } from '../motion/useDrift';
 import styles from './Contact.module.css';
 
 export default function Contact() {
   const ref = useReveal<HTMLElement>();
+  useDrift(ref);
 
   return (
     <section
@@ -22,10 +24,10 @@ export default function Contact() {
           id="contact-title"
         />
         <p className={`lead ${styles.pitch}`} data-reveal="">
-          I&rsquo;m happiest deep inside an animation curve, a gesture handler, or a
-          native module everyone said couldn&rsquo;t be done. If you&rsquo;re building
-          something that deserves that level of care — write to me.
-          <strong> No forms, no funnels. Just email.</strong>
+          I&rsquo;m happiest deep inside an animation curve, a gesture, or a native
+          module everyone said couldn&rsquo;t be done. Building something that should
+          feel right? Write to me.
+          <strong> No forms — just email.</strong>
         </p>
         <div className={styles.emailBlock} data-reveal="" data-delay="0.1">
           <CopyEmail />

@@ -1,12 +1,13 @@
 # Omer Attias — Portfolio
 
-**Interfaces with muscle memory.** A single-page portfolio for a React Native /
-motion engineer, built to demonstrate its own thesis: quiet on the surface,
+**Interfaces you can feel.** A single-page portfolio for a mobile / motion
+engineer, built to demonstrate its own thesis: quiet on the surface,
 obsessively engineered underneath.
 
 ## Concept
 
-The site tells one story — *origin → mastery* — and the hero **is** that story:
+The site tells one story — *origin → mastery* — and the monogram **is** that
+story, riding the entire scroll:
 
 - In 2022, Omer hand-placed his initials into a flat CSS grid, cell by cell
   ([the original](https://omeratt.github.io/intro/)).
@@ -14,11 +15,17 @@ The site tells one story — *origin → mastery* — and the hero **is** that s
   as ~256 WebGL voxels that fly in and assemble on load. One data file feeds the
   3D monogram, the flat homage in the Story section, the header mark, and the
   favicon. *Same cells — more depth.*
-- Scrolling away scatters the voxels; scrolling back reassembles them. The cursor
-  bends them gently — and a **click detonates them**: an impulse radiates from the
-  click point ([`src/three/blastSim.ts`](src/three/blastSim.ts)), cubes tumble
-  through drag-damped free flight, then a magnet wakes in a wave and every cube
-  springs home. Click again mid-flight and the new blast rides the current motion.
+- **The letters never leave** ([`src/three/formation.ts`](src/three/formation.ts)):
+  past the hero they loosen into a drifting constellation that keeps you company;
+  beside the 2022 homage they **flatten back into the original flat grid** —
+  the scroll literally travels back in time — and at the contact sign-off they
+  pull whole again. Full circle.
+- The cursor bends them gently — and a **click detonates them**: an impulse
+  radiates from the click point ([`src/three/blastSim.ts`](src/three/blastSim.ts)),
+  cubes tumble through drag-damped free flight, then a magnet wakes in a wave and
+  every cube springs home — home being *wherever the journey currently wants
+  them*, flat, loose or whole. Click again mid-flight and the new blast rides
+  the current motion.
 
 Basketball stays a hint, never a theme: the **orange** (a redhead's hair, a ball),
 an orange period that *dribbles* into every heading, a shot-arc easing family, a
@@ -36,9 +43,11 @@ floodlight follows the cursor).
   everywhere, and *printed + demoed live* in the Craft section. The page runs on
   the exact values it preaches.
 - **Lenis + GSAP ScrollTrigger** on a single ticker for smooth scroll and scrubbed
-  effects; **React Three Fiber** with `frameloop="demand"` — the canvas renders
-  only while the hero is on screen, and three.js is lazy-loaded so the copy never
-  waits for WebGL.
+  effects; **React Three Fiber** with `frameloop="demand"`, and three.js is
+  lazy-loaded so the copy never waits for WebGL. Every section's content glides
+  slightly slower than the page ([`src/motion/useDrift.ts`](src/motion/useDrift.ts)),
+  the two-layer court background drifts at two more speeds, and the three-point
+  arc draws itself across the full scroll — one page, four depth planes.
 - **Shatter physics is pure, dependency-free math** (impulse + drag + underdamped
   return springs, dt-clamped so background tabs can't blow up the integration),
   which makes it directly testable off-screen. Mid-scroll blasts stay honest: cubes

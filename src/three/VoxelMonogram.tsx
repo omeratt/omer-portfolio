@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { buildVoxels, mulberry32, VOXEL_SIZE } from './oaGrid';
-import { simFrame, composeFromState, pointerOnMonogram } from './voxelSim';
+import { simFrame, composeFromState, pointerOnMonogram, type SimCtx } from './voxelSim';
+import { writeFormation, effLoosen, type JourneyState } from './formation';
 import { createBlastState, igniteBlast, stepBlast, type BlastTrigger } from './blastSim';
 import { useVoxelPaint } from './useVoxelPaint';
 import { usePointerNdc } from './usePointerNdc';
@@ -14,15 +15,15 @@ interface Props {
   reduced: boolean;
   /** entrance gate — assembly starts when the page cascade starts */
   playing: boolean;
-  /** 0 assembled … 1 scattered, scrubbed by the hero's scroll progress */
-  disperseRef: RefObject<number>;
-  /** the hero hands clicks in here as NDC; we answer with a shockwave */
+  /** the scroll-driven journey dials (loosen / flatten / contact) */
+  journeyRef: RefObject<JourneyState>;
+  /** clicks arrive here as NDC; we answer with a shockwave */
   blastRef: RefObject<BlastTrigger | null>;
 }
 
 const lerp = THREE.MathUtils.lerp;
 
-export default function VoxelMonogram({ theme, reduced, playing, disperseRef, blastRef }: Props) {
+export default function VoxelMonogram({ theme, reduced, playing, journeyRef, blastRef }: Props) {
   const voxels = useMemo(() => buildVoxels(), []);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -36,6 +37,10 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef, bl
   const blast = useRef(createBlastState(voxels.length));
   const rng = useRef(mulberry32(1405));
   const camera = useThree((s) => s.camera);
+  // one mutable ctx, refreshed every frame — zero per-frame allocation
+  const ctx = useRef<SimCtx>({
+    loosen: 0, flatten: 0, contact: 0, elapsed: 0, time: 0, reduced, pointer: null,
+  });
 
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   const material = useMemo(
@@ -53,22 +58,22 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef, bl
     blastRef.current = (ndc) => {
       const group = groupRef.current;
       if (!group || reduced || !assembledRef.current) return;
-      if (disperseRef.current > 0.5) return; // mostly scrolled away — nothing to shatter
+      // only shatter a readable letterform — never the loose constellation
+      if (effLoosen(journeyRef.current) > 0.5) return;
       const p = pointerOnMonogram(ndc.x, ndc.y, camera, group, blastVec.current);
       if (p) igniteBlast(blast.current, voxels, fieldPos, fieldRot, p, rng.current);
     };
     return () => {
       blastRef.current = null;
     };
-  }, [blastRef, camera, reduced, voxels, fieldPos, fieldRot, disperseRef]);
+  }, [blastRef, camera, reduced, voxels, fieldPos, fieldRot, journeyRef]);
 
   useFrame(({ clock, size }, delta) => {
     const mesh = meshRef.current;
     const group = groupRef.current;
     if (!mesh || !group) return;
 
-    // responsive placement: anchored right of the copy on wide screens
-    // (the canvas mask ghosts whatever passes under the text), above it on narrow
+    // responsive anchor: right of the copy on wide screens, up top on narrow
     const aspect = size.width / Math.max(1, size.height);
     const portrait = aspect < 0.85;
     const scale = portrait ? Math.min(0.62, aspect * 1.05) : Math.min(0.94, aspect * 0.58);
@@ -81,37 +86,44 @@ export default function VoxelMonogram({ theme, reduced, playing, disperseRef, bl
     const elapsed = reduced ? 99 : startRef.current < 0 ? 0 : t - startRef.current;
     if (elapsed > 1.9) assembledRef.current = true;
 
-    // idle: a slow breath and a lean toward the cursor
+    const j = journeyRef.current;
+    const c = ctx.current;
+    c.loosen = j.loosen;
+    c.flatten = j.flatten;
+    c.contact = j.contact;
+    c.elapsed = elapsed;
+    c.time = t;
+    c.reduced = reduced;
+
+    // idle: a slow breath and a lean toward the cursor — both calm down
+    // while the letters travel as a cloud
     const ndc = ndcRef.current;
+    const presence = 1 - effLoosen(j) * 0.7;
     if (!reduced) {
       group.position.y = baseY + Math.sin(t * 0.6) * 0.06;
-      group.rotation.y = lerp(group.rotation.y, (ndc?.x ?? 0) * 0.15, 0.055);
-      group.rotation.x = lerp(group.rotation.x, -(ndc?.y ?? 0) * 0.1, 0.055);
+      group.rotation.y = lerp(group.rotation.y, (ndc?.x ?? 0) * 0.15 * presence, 0.055);
+      group.rotation.x = lerp(group.rotation.x, -(ndc?.y ?? 0) * 0.1 * presence, 0.055);
     } else {
       group.position.y = baseY;
     }
 
-    // shatter physics owns the frame while it's live
+    // shatter physics owns the frame while it's live — but it magnetizes
+    // to the LIVE formation, so scroll and flatten stay honest mid-flight
     const b = blast.current;
     if (b.active) {
-      stepBlast(b, voxels, delta, disperseRef.current);
+      c.pointer = null;
+      writeFormation(voxels, c, fieldPos, fieldRot);
+      stepBlast(b, voxels.length, delta, fieldPos, fieldRot);
       composeFromState(mesh, b.pos, b.rot, VOXEL_SIZE);
       return;
     }
 
-    const pointer =
+    c.pointer =
       ndc && !reduced
         ? pointerOnMonogram(ndc.x, ndc.y, camera, group, pointerVec.current)
         : null;
 
-    simFrame(
-      mesh,
-      voxels,
-      { elapsed, disperse: disperseRef.current, pointer, reduced },
-      VOXEL_SIZE,
-      fieldPos,
-      fieldRot,
-    );
+    simFrame(mesh, voxels, c, VOXEL_SIZE, fieldPos, fieldRot);
   });
 
   return (

@@ -2,10 +2,12 @@ import SectionHeading from '../components/SectionHeading';
 import ActionLink from '../components/ActionLink';
 import GridMark from '../components/GridMark';
 import { useReveal } from '../motion/useReveal';
+import { useDrift } from '../motion/useDrift';
 import styles from './Story.module.css';
 
 export default function Story() {
   const ref = useReveal<HTMLElement>();
+  useDrift(ref);
 
   return (
     <section id="origin" ref={ref} className={styles.section} aria-labelledby="origin-title">
@@ -13,33 +15,31 @@ export default function Story() {
         <SectionHeading
           index="01"
           label="Origin"
-          lines={['Twenty years of', 'the same obsession']}
+          lines={['It started', 'with a game']}
           id="origin-title"
         />
         <div className={styles.grid}>
           <div className={styles.copy}>
             <p data-reveal="">
-              It started in 2004: a ten-year-old building his own game because playing
-              someone else&rsquo;s wasn&rsquo;t enough. The obsession never left. It just
-              kept getting better tools.
+              2004. I was ten, and someone else&rsquo;s game wasn&rsquo;t enough — so I
+              built my own. The itch never left.
             </p>
             <p data-reveal="">
-              The other constant was basketball. A jump shot and a spring curve are the
-              same discipline — repeat the motion until nothing wobbles, then keep going
-              until it looks effortless. Everything I ship is built with that patience.
+              The other constant was a basketball. A jump shot and a spring curve are
+              the same discipline: repeat until nothing wobbles, then make it look easy.
             </p>
             <p data-reveal="">
-              A long trip through South America and Thailand later, I studied software
-              engineering properly, then went deep into the one place where design,
-              physics and native code all meet: mobile interfaces.
+              Years later — after South America, after the degree — I found where it
+              all meets: mobile screens, where code has to feel like touch.
             </p>
             <p data-reveal="">
-              One night in 2022, I hand-placed my initials into a CSS grid, cell by cell,
-              and animated them to life. It was small, slightly crooked, and I loved it
-              more than anything I&rsquo;d shipped before. That page is why I do motion.
+              Then, one night in 2022, I hand-placed my initials into a CSS grid and
+              animated them to life. Small, slightly crooked — and I loved it more than
+              anything I&rsquo;d shipped. That page is why I do motion.
             </p>
             <p className={styles.closing} data-reveal="">
-              The monogram at the top of this page is that exact grid, rebuilt in WebGL.
+              The letters drifting around this page are that exact grid, rebuilt in
+              WebGL.
               <strong> Same cells — more depth.</strong>
             </p>
             <p className={`label ${styles.footnote}`} data-reveal="">

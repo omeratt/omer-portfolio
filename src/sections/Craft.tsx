@@ -1,6 +1,7 @@
 import SectionHeading from '../components/SectionHeading';
 import EasingCard, { type Curve } from './EasingCard';
 import { useReveal } from '../motion/useReveal';
+import { useDrift } from '../motion/useDrift';
 import { BEZIER } from '../motion/easings';
 import styles from './Craft.module.css';
 
@@ -27,6 +28,7 @@ const CURVES: Curve[] = [
 
 export default function Craft() {
   const ref = useReveal<HTMLElement>();
+  useDrift(ref);
 
   return (
     <section id="craft" ref={ref} className={styles.section} aria-labelledby="craft-title">
@@ -38,9 +40,8 @@ export default function Craft() {
           id="craft-title"
         />
         <p className={`lead ${styles.intro}`} data-reveal="">
-          Motion should explain, not decorate — <strong>a dropped frame is a bug, not a
-          mood.</strong> That philosophy lives in Reanimated worklets on the UI thread,
-          in gesture physics, and in haptics timed to the exact millisecond of impact.
+          Motion should explain, not decorate — <strong>a dropped frame is a bug, not
+          a mood.</strong>
         </p>
         <div className={styles.cards}>
           {CURVES.map((curve, i) => (

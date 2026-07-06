@@ -12,6 +12,20 @@
   stroke-width: 1.5;
 }
 
-.lines * {
+.far {
+  fill: none;
+  stroke: var(--court);
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
+/* orbiting tick marks around the center circle */
+.ring {
+  stroke-dasharray: 2 11;
+  stroke-linecap: round;
+}
+
+.lines *,
+.far * {
   vector-effect: non-scaling-stroke;
 }
