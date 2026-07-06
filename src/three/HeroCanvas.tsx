@@ -7,6 +7,7 @@ import { SCENE } from './palette';
 import { useTheme } from '../theme/useTheme';
 import { useMotion } from '../motion/useMotion';
 import type { Theme } from '../theme/context';
+import type { BlastTrigger } from './blastSim';
 
 /** Renders only while the hero is on screen — zero GPU beyond it. */
 function InvalidateWhileVisible({ activeRef }: { activeRef: RefObject<boolean> }) {
@@ -39,10 +40,11 @@ function Lights({ theme }: { theme: Theme }) {
 
 interface Props {
   disperseRef: RefObject<number>;
+  blastRef: RefObject<BlastTrigger | null>;
   onReady: () => void;
 }
 
-export default function HeroCanvas({ disperseRef, onReady }: Props) {
+export default function HeroCanvas({ disperseRef, blastRef, onReady }: Props) {
   const { theme } = useTheme();
   const { reduced, ready } = useMotion();
   const activeRef = useRef(true);
@@ -74,7 +76,13 @@ export default function HeroCanvas({ disperseRef, onReady }: Props) {
       >
         <InvalidateWhileVisible activeRef={activeRef} />
         <Lights theme={theme} />
-        <VoxelMonogram theme={theme} reduced={reduced} playing={ready} disperseRef={disperseRef} />
+        <VoxelMonogram
+          theme={theme}
+          reduced={reduced}
+          playing={ready}
+          disperseRef={disperseRef}
+          blastRef={blastRef}
+        />
       </Canvas>
     </div>
   );

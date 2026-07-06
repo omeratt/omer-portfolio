@@ -15,7 +15,10 @@ The site tells one story — *origin → mastery* — and the hero **is** that s
   3D monogram, the flat homage in the Story section, the header mark, and the
   favicon. *Same cells — more depth.*
 - Scrolling away scatters the voxels; scrolling back reassembles them. The cursor
-  bends them gently.
+  bends them gently — and a **click detonates them**: an impulse radiates from the
+  click point ([`src/three/blastSim.ts`](src/three/blastSim.ts)), cubes tumble
+  through drag-damped free flight, then a magnet wakes in a wave and every cube
+  springs home. Click again mid-flight and the new blast rides the current motion.
 
 Basketball stays a hint, never a theme: the **orange** (a redhead's hair, a ball),
 an orange period that *dribbles* into every heading, a shot-arc easing family, a
@@ -36,6 +39,10 @@ floodlight follows the cursor).
   effects; **React Three Fiber** with `frameloop="demand"` — the canvas renders
   only while the hero is on screen, and three.js is lazy-loaded so the copy never
   waits for WebGL.
+- **Shatter physics is pure, dependency-free math** (impulse + drag + underdamped
+  return springs, dt-clamped so background tabs can't blow up the integration),
+  which makes it directly testable off-screen. Mid-scroll blasts stay honest: cubes
+  magnetize to wherever the scroll currently wants them, not to a stale home.
 - **Theme flip as a view transition**: a circle expanding from the toggle itself
   (View Transitions API, with a graceful fallback).
 - **`prefers-reduced-motion`** is honored end-to-end: no smooth scroll, no
