@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { useMagnetic } from '../motion/useMagnetic';
 import styles from './CopyEmail.module.css';
 
 const EMAIL = 'omeratt1405@gmail.com';
@@ -7,7 +6,6 @@ const EMAIL = 'omeratt1405@gmail.com';
 export default function CopyEmail() {
   const [copied, setCopied] = useState(false);
   const timer = useRef(0);
-  const magnet = useMagnetic<HTMLAnchorElement>(0.15);
 
   const markCopied = () => {
     setCopied(true);
@@ -36,7 +34,7 @@ export default function CopyEmail() {
 
   return (
     <div className={styles.row}>
-      <a ref={magnet} className={`display ${styles.email}`} href={`mailto:${EMAIL}`}>
+      <a className={`display ${styles.email}`} href={`mailto:${EMAIL}`}>
         {EMAIL}
       </a>
       <button

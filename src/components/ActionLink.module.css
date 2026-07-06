@@ -2,7 +2,6 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  will-change: transform;
 }
 
 .text {
@@ -13,14 +12,14 @@
   display: inline-block;
   font-size: 0.85em;
   color: var(--accent-ink);
-  transition: transform 0.3s var(--ease-arc);
+  transition: transform 0.25s var(--ease-arc);
 }
 
 .base:hover .arrow {
   transform: translate(2px, -2px);
 }
 
-/* bordered pill */
+/* bordered pill — a small, instant lift on hover, a crisp press on click */
 .pill {
   padding: 13px 24px;
   border: 1px solid var(--line);
@@ -33,16 +32,23 @@
   color: var(--ink);
   background: transparent;
   transition:
-    border-color 0.3s ease,
-    background-color 0.3s ease;
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    transform 0.25s var(--ease-snap);
 }
 
 .pill:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
+  transform: translateY(-2px);
 }
 
-/* underlined text link */
+.pill:active {
+  transform: translateY(0);
+  transition-duration: 0.08s;
+}
+
+/* underlined text link — the orange sweep you liked, untouched */
 .line {
   position: relative;
   padding-bottom: 2px;

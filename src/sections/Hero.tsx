@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import HeroStage from './HeroStage';
-import MagneticLink from '../components/MagneticLink';
+import ActionLink from '../components/ActionLink';
 import { useMotion } from '../motion/useMotion';
 import styles from './Hero.module.css';
 
@@ -94,12 +94,12 @@ export default function Hero() {
           second treated as a contract.
         </p>
         <div className={styles.ctas} data-entrance="">
-          <MagneticLink variant="pill" href="#work" onClick={go('#work')}>
+          <ActionLink variant="pill" href="#work" onClick={go('#work')}>
             See the work
-          </MagneticLink>
-          <MagneticLink variant="line" href="#contact" onClick={go('#contact')}>
+          </ActionLink>
+          <ActionLink variant="line" href="#contact" onClick={go('#contact')}>
             Say hello
-          </MagneticLink>
+          </ActionLink>
         </div>
       </div>
       <div className={styles.hint} data-entrance="" data-hint="" aria-hidden="true">

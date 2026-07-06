@@ -1,5 +1,5 @@
 import SectionHeading from '../components/SectionHeading';
-import MagneticLink from '../components/MagneticLink';
+import ActionLink from '../components/ActionLink';
 import CopyEmail from '../components/CopyEmail';
 import { useReveal } from '../motion/useReveal';
 import styles from './Contact.module.css';
@@ -31,12 +31,12 @@ export default function Contact() {
           <CopyEmail />
         </div>
         <div className={styles.socials} data-reveal="" data-delay="0.18">
-          <MagneticLink href="https://github.com/omeratt" external>
+          <ActionLink href="https://github.com/omeratt" external>
             GitHub
-          </MagneticLink>
-          <MagneticLink href="https://www.linkedin.com/in/omer-attias/" external>
+          </ActionLink>
+          <ActionLink href="https://www.linkedin.com/in/omer-attias/" external>
             LinkedIn
-          </MagneticLink>
+          </ActionLink>
         </div>
       </div>
     </section>
