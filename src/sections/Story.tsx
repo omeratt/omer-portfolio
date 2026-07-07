@@ -1,13 +1,44 @@
+import { useRef } from 'react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
 import SectionHeading from '../components/SectionHeading';
 import ActionLink from '../components/ActionLink';
 import GridMark from '../components/GridMark';
 import { useReveal } from '../motion/useReveal';
 import { useDrift } from '../motion/useDrift';
+import { useMotion } from '../motion/useMotion';
+import { journey } from '../three/journey';
+import { anchorRef, registerAnchor } from '../three/anchorRegistry';
+import { hasWebGL } from '../three/webgl';
 import styles from './Story.module.css';
 
 export default function Story() {
   const ref = useReveal<HTMLElement>();
   useDrift(ref);
+  const voxel = hasWebGL();
+  const { reduced } = useMotion();
+  const homageRef = useRef<HTMLElement>(null);
+
+  // the homage panel scrubs its own build gate — the 2022 grid assembles as
+  // the panel scrolls in and only dissolves once it scrolls away
+  useGSAP(
+    () => {
+      const el = homageRef.current;
+      if (!voxel || reduced || !el) return;
+      ScrollTrigger.create({
+        trigger: el,
+        start: 'top 94%',
+        // the homage is sticky on desktop — hold the grid for as long as the
+        // panel actually stays on screen, i.e. until the section lets go
+        endTrigger: document.getElementById('origin'),
+        end: 'bottom 32%',
+        scrub: true,
+        onUpdate: (st) => { journey.originShape = st.progress; },
+        onRefresh: (st) => { journey.originShape = st.progress; },
+      });
+    },
+    { dependencies: [voxel, reduced], scope: homageRef },
+  );
 
   return (
     <section id="origin" ref={ref} className={styles.section} aria-labelledby="origin-title">
@@ -46,9 +77,26 @@ export default function Story() {
               B.Sc. Software Engineering · graduated with honors
             </p>
           </div>
-          <figure className={styles.homage} data-reveal="" data-delay="0.15">
-            <GridMark cell={11} tone="heritage" build className={styles.homageGrid} />
-            <figcaption className={styles.caption}>
+          <figure
+            ref={(el) => {
+              homageRef.current = el;
+              registerAnchor('zone:origin-grid', el);
+            }}
+            className={styles.homage}
+            data-reveal=""
+            data-delay="0.15"
+          >
+            {voxel ? (
+              /* the voxel swarm assembles the 2022 grid inside this window */
+              <div ref={anchorRef('origin-grid')} className={styles.voxelGrid} aria-hidden="true" />
+            ) : (
+              <GridMark cell={11} tone="heritage" build className={styles.homageGrid} />
+            )}
+            <figcaption
+              className={styles.caption}
+              data-reveal=""
+              data-reveal-start="top 72%"
+            >
               <span className="label">2022 — the first build</span>
               <ActionLink href="https://omeratt.github.io/intro/" external>
                 The original, untouched

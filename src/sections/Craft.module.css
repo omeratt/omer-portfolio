@@ -17,6 +17,16 @@
   color: var(--ink-2);
 }
 
+/* page-colored veil under the section copy — floaters ghost behind text */
+:global([data-voxel-stage]) .intro,
+:global([data-voxel-stage]) .outro {
+  width: fit-content;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  border-radius: 16px;
+  margin-inline: -14px;
+  padding: 14px;
+}
+
 @media (max-width: 880px) {
   .cards {
     grid-template-columns: 1fr;

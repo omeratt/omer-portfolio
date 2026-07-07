@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { VoxelSeed } from './oaGrid';
-import type { Formations } from './formations';
-import { writeFormation, settleOf, clamp01, type FormationCtx } from './formation';
+import type { VoxelCasting } from './formations';
+import { writeFormation, settleOf, type FormationCtx } from './formation';
+import { clamp01 } from './journey';
 
 export interface SimCtx extends FormationCtx {
   /** cursor on the monogram plane, in group space (null = no pointer) */
@@ -17,13 +18,16 @@ const S = new THREE.Vector3();
 export function simFrame(
   mesh: THREE.InstancedMesh,
   voxels: VoxelSeed[],
-  forms: Formations,
+  cast: VoxelCasting,
   ctx: SimCtx,
   size: number,
   outPos: Float32Array,
   outRot: Float32Array,
+  outScale: Float32Array,
+  outMixA: Float32Array,
+  outMixH: Float32Array,
 ) {
-  writeFormation(voxels, forms, ctx, outPos, outRot);
+  writeFormation(voxels, cast, ctx, outPos, outRot, outScale, outMixA, outMixH);
 
   // cursor push — any coherent shape reacts, the loose cloud doesn't
   const pushable =
@@ -45,7 +49,7 @@ export function simFrame(
     }
 
     const settle = settleOf(voxels[i], ctx);
-    const s = size * (0.25 + 0.75 * clamp01(settle));
+    const s = size * outScale[i] * (0.25 + 0.75 * clamp01(settle));
     E.set(outRot[i3], outRot[i3 + 1], outRot[i3 + 2]);
     Q.setFromEuler(E);
     P.set(outPos[i3], outPos[i3 + 1], outPos[i3 + 2]);
@@ -61,12 +65,14 @@ export function composeFromState(
   mesh: THREE.InstancedMesh,
   pos: Float32Array,
   rot: Float32Array,
+  scale: Float32Array,
   size: number,
 ) {
-  S.set(size, size, size);
   const count = pos.length / 3;
   for (let i = 0; i < count; i++) {
     const i3 = i * 3;
+    const s = size * scale[i];
+    S.set(s, s, s);
     E.set(rot[i3], rot[i3 + 1], rot[i3 + 2]);
     Q.setFromEuler(E);
     P.set(pos[i3], pos[i3 + 1], pos[i3 + 2]);

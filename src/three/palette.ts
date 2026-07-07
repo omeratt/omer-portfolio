@@ -3,6 +3,8 @@ import type { Theme } from '../theme/context';
 export interface ScenePalette {
   cube: string;
   orange: string;
+  /** the 2022 yellow — the homage grid keeps its original color, verbatim */
+  heritage: string;
   ambient: string;
   ambientIntensity: number;
   key: string;
@@ -20,6 +22,7 @@ export const SCENE: Record<Theme, ScenePalette> = {
   light: {
     cube: '#fbf7ef',
     orange: '#f4541d',
+    heritage: '#f7ba3e',
     ambient: '#fff1dd',
     ambientIntensity: 1.05,
     key: '#ffffff',
@@ -30,6 +33,7 @@ export const SCENE: Record<Theme, ScenePalette> = {
   dark: {
     cube: '#232327',
     orange: '#ff6a2e',
+    heritage: '#f7ba3e',
     ambient: '#8f9bd6',
     ambientIntensity: 0.4,
     key: '#eef2ff',

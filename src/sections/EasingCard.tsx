@@ -4,6 +4,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { sampleEase } from '../motion/easings';
 import { useMotion } from '../motion/useMotion';
+import { journey } from '../three/journey';
+import { anchorRef, registerAnchor } from '../three/anchorRegistry';
+import { pokeShape } from '../three/sectionAnims';
+import { hasWebGL } from '../three/webgl';
 import styles from './EasingCard.module.css';
 
 export interface Curve {
@@ -13,6 +17,99 @@ export interface Curve {
   blurb: string;
 }
 
+interface Props {
+  curve: Curve;
+  /** card position in the row — binds it to its voxel shape (craft-N) */
+  index: number;
+  delay: number;
+}
+
+/**
+ * A house curve, demonstrated. With WebGL the voxel swarm builds the graph
+ * inside the card and a cube cluster rides it; without, the original flat
+ * SVG demo takes over.
+ */
+export default function EasingCard(props: Props) {
+  return hasWebGL() ? <VoxelCard {...props} /> : <FlatCard {...props} />;
+}
+
+function ReplayIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+      <path
+        d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.8v2.7h-2.7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function VoxelCard({ curve, index, delay }: Props) {
+  const id = `craft-${index}`;
+  const replay = () => pokeShape(id);
+  const { reduced } = useMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // each card scrubs its own build gate; a slight per-index offset keeps the
+  // three graphs building one after another even when the cards share a row
+  useGSAP(
+    () => {
+      const el = rootRef.current;
+      if (reduced || !el) return;
+      ScrollTrigger.create({
+        trigger: el,
+        start: `top ${94 - index * 8}%`,
+        end: 'bottom 12%',
+        scrub: true,
+        onUpdate: (st) => { journey.craftShapes[index] = st.progress; },
+        onRefresh: (st) => { journey.craftShapes[index] = st.progress; },
+      });
+    },
+    { dependencies: [reduced, index], scope: rootRef },
+  );
+
+  return (
+    <div
+      ref={(el) => {
+        rootRef.current = el;
+        registerAnchor(`zone:${id}`, el);
+      }}
+      className={styles.card}
+      data-reveal=""
+      data-delay={String(delay)}
+      onPointerEnter={replay}
+    >
+      <div className={styles.top}>
+        <h3 className={styles.name}>{curve.name}</h3>
+        <button
+          type="button"
+          className={styles.replay}
+          onClick={replay}
+          aria-label={`Replay the ${curve.name} easing demo`}
+        >
+          <ReplayIcon />
+        </button>
+      </div>
+      {/* the voxel window — graph, ball and slider assemble in here */}
+      <div ref={anchorRef(id)} className={styles.stagebox} aria-hidden="true" />
+      <p className={styles.code} data-reveal="" data-reveal-start="top 62%">
+        {curve.code}
+      </p>
+      <p className={styles.blurb} data-reveal="" data-reveal-start="top 62%">
+        {curve.blurb}
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Flat fallback — the original SVG demo, for contexts without WebGL   */
+/* ------------------------------------------------------------------ */
+
 const W = 200;
 const H = 116;
 const PX = 16;
@@ -21,7 +118,7 @@ const PY = 26;
 const toX = (t: number) => PX + t * (W - PX * 2);
 const toY = (v: number) => H - PY - v * (H - PY * 2);
 
-export default function EasingCard({ curve, delay }: { curve: Curve; delay: number }) {
+function FlatCard({ curve, delay }: Props) {
   const { reduced } = useMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
@@ -95,16 +192,7 @@ export default function EasingCard({ curve, delay }: { curve: Curve; delay: numb
           onClick={play}
           aria-label={`Replay the ${curve.name} easing demo`}
         >
-          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-            <path
-              d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.8v2.7h-2.7"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <ReplayIcon />
         </button>
       </div>
       <svg className={styles.graph} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">

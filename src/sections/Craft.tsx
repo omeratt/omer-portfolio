@@ -45,7 +45,7 @@ export default function Craft() {
         </p>
         <div className={styles.cards}>
           {CURVES.map((curve, i) => (
-            <EasingCard key={curve.name} curve={curve} delay={i * 0.12} />
+            <EasingCard key={curve.name} curve={curve} index={i} delay={i * 0.12} />
           ))}
         </div>
         <p className={`label ${styles.outro}`} data-reveal="">

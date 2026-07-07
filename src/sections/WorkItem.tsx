@@ -1,9 +1,15 @@
-import type { ComponentType } from 'react';
+import { useRef, type ComponentType } from 'react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
 import ActionLink from '../components/ActionLink';
 import NetMotif from './motifs/NetMotif';
 import PlayMotif from './motifs/PlayMotif';
 import PaginationMotif from './motifs/PaginationMotif';
 import MergeMotif from './motifs/MergeMotif';
+import { useMotion } from '../motion/useMotion';
+import { journey } from '../three/journey';
+import { anchorRef, registerAnchor } from '../three/anchorRegistry';
+import { hasWebGL } from '../three/webgl';
 import type { MotifKind, Project } from '../data/projects';
 import styles from './WorkItem.module.css';
 
@@ -14,8 +20,36 @@ const MOTIFS: Record<MotifKind, ComponentType> = {
   merge: MergeMotif,
 };
 
-export default function WorkItem({ project, flip }: { project: Project; flip: boolean }) {
+interface Props {
+  project: Project;
+  /** position in the list — binds the panel to its voxel shape (work-N) */
+  index: number;
+  flip: boolean;
+}
+
+export default function WorkItem({ project, index, flip }: Props) {
+  const voxel = hasWebGL();
+  const { reduced } = useMotion();
+  const panelRef = useRef<HTMLDivElement>(null);
   const Motif = MOTIFS[project.motif];
+
+  // each panel scrubs its own build gate — shapes accumulate down the
+  // section, each assembling as its panel scrolls into view
+  useGSAP(
+    () => {
+      const panel = panelRef.current;
+      if (!voxel || reduced || !panel) return;
+      ScrollTrigger.create({
+        trigger: panel,
+        start: 'top 94%',
+        end: 'bottom 16%',
+        scrub: true,
+        onUpdate: (st) => { journey.workShapes[index] = st.progress; },
+        onRefresh: (st) => { journey.workShapes[index] = st.progress; },
+      });
+    },
+    { dependencies: [voxel, reduced, index], scope: panelRef },
+  );
 
   return (
     <li className={styles.item} data-flip={flip || undefined}>
@@ -47,10 +81,29 @@ export default function WorkItem({ project, flip }: { project: Project; flip: bo
           </div>
         </div>
         <figure className={styles.visual} data-reveal="" data-delay="0.12">
-          <div className={styles.panel}>
-            <Motif />
+          <div
+            ref={(el) => {
+              panelRef.current = el;
+              registerAnchor(`zone:work-${index}`, el);
+            }}
+            className={styles.panel}
+          >
+            {voxel ? (
+              /* the voxel window — this project's motif assembles in here */
+              <div
+                ref={anchorRef(`work-${index}`)}
+                className={styles.motifStage}
+                aria-hidden="true"
+              />
+            ) : (
+              <Motif />
+            )}
           </div>
-          <figcaption className={`label ${styles.proves}`}>
+          <figcaption
+            className={`label ${styles.proves}`}
+            data-reveal=""
+            data-reveal-start="top 58%"
+          >
             <span className={styles.arrow} aria-hidden="true">
               ↳
             </span>

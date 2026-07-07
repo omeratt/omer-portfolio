@@ -10,6 +10,15 @@
   margin-bottom: clamp(56px, 9vh, 96px);
 }
 
+/* page-colored veil under the section lead — floaters ghost behind text */
+:global([data-voxel-stage]) .sub {
+  width: fit-content;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  border-radius: 16px;
+  margin-inline: -14px;
+  padding: 14px;
+}
+
 .list {
   display: flex;
   flex-direction: column;
