@@ -8,6 +8,8 @@ const TRIG = { start: 'top 87%', once: true } as const;
 /**
  * The site-wide reveal grammar. Sections opt elements in with data attributes:
  *   data-reveal          fade-up block (optional data-delay="0.15")
+ *   data-reveal-start    ScrollTrigger start override (e.g. "top 55%") — used
+ *                        to hold text back until its voxel shape has built
  *   data-lines-root      children [data-line] mask-reveal, [data-dot] dribbles in
  *   data-rule            hairline draws left → right
  *   data-grid-build      child spans assemble in random stagger (the 2022 grid)
@@ -42,7 +44,7 @@ export function useReveal<T extends HTMLElement = HTMLElement>() {
             duration: 1,
             ease: 'snap',
             delay: Number(el.dataset.delay ?? 0),
-            scrollTrigger: { trigger: el, ...TRIG },
+            scrollTrigger: { trigger: el, ...TRIG, start: el.dataset.revealStart ?? TRIG.start },
           },
         );
       });

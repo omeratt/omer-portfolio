@@ -29,7 +29,7 @@ export default function Work() {
         </p>
         <ul className={styles.list}>
           {PROJECTS.map((project, i) => (
-            <WorkItem key={project.id} project={project} flip={i % 2 === 1} />
+            <WorkItem key={project.id} project={project} index={i} flip={i % 2 === 1} />
           ))}
         </ul>
       </div>

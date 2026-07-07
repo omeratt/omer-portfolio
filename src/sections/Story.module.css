@@ -53,6 +53,18 @@
   max-width: 100%;
 }
 
+/* the voxel window — the swarm builds the 2022 grid in here */
+.voxelGrid {
+  width: 100%;
+  min-width: min(260px, 100%);
+  aspect-ratio: 12 / 7;
+}
+
+/* voxels live on the canvas behind the page — the panel becomes a frame */
+:global([data-voxel-stage]) .homage {
+  background: transparent;
+}
+
 .caption {
   display: flex;
   flex-direction: column;

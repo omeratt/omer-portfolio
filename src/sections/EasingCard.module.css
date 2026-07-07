@@ -54,6 +54,17 @@
   height: auto;
 }
 
+/* the voxel window — graph, ball and slider assemble on the canvas behind */
+.stagebox {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+/* voxels live on the canvas behind the page — the card becomes a frame */
+:global([data-voxel-stage]) .card {
+  background: transparent;
+}
+
 .axis {
   stroke: var(--line-soft);
   stroke-width: 1;

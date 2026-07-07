@@ -7,7 +7,6 @@ import { SCENE } from './palette';
 import { useTheme } from '../theme/useTheme';
 import { useMotion } from '../motion/useMotion';
 import type { Theme } from '../theme/context';
-import type { JourneyState } from './formation';
 import type { BlastTrigger } from './blastSim';
 
 /** Renders only while the journey says so — zero GPU when parked. */
@@ -40,13 +39,12 @@ function Lights({ theme }: { theme: Theme }) {
 }
 
 interface Props {
-  journeyRef: RefObject<JourneyState>;
   blastRef: RefObject<BlastTrigger | null>;
   activeRef: RefObject<boolean>;
   onReady: () => void;
 }
 
-export default function HeroCanvas({ journeyRef, blastRef, activeRef, onReady }: Props) {
+export default function HeroCanvas({ blastRef, activeRef, onReady }: Props) {
   const { theme } = useTheme();
   const { reduced, ready } = useMotion();
 
@@ -66,13 +64,7 @@ export default function HeroCanvas({ journeyRef, blastRef, activeRef, onReady }:
       >
         <InvalidateWhileActive activeRef={activeRef} />
         <Lights theme={theme} />
-        <VoxelMonogram
-          theme={theme}
-          reduced={reduced}
-          playing={ready}
-          journeyRef={journeyRef}
-          blastRef={blastRef}
-        />
+        <VoxelMonogram theme={theme} reduced={reduced} playing={ready} blastRef={blastRef} />
       </Canvas>
     </div>
   );

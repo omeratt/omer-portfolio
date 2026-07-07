@@ -5,29 +5,31 @@
   pointer-events: none;
 }
 
-/* reduced motion parks the monogram once the hero leaves */
-.stage[data-offstage] {
-  opacity: 0;
-}
-
 .canvas {
   position: absolute;
   inset: 0;
   opacity: 0;
   transition: opacity 0.9s ease;
-  /* letters ghost out as they pass under the copy — overlap becomes depth */
+  /* letters ghost out as they pass under the copy — overlap becomes depth.
+     The gradient lives in the left third of a 3×-wide mask; --mx (0 → 1)
+     slides the fully-opaque tail across, so the ghosting releases smoothly
+     while the section shapes own the page and returns for the reprise. */
   -webkit-mask-image: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.16) 0%,
-    rgba(0, 0, 0, 0.45) 42%,
-    #000 60%
+    rgba(0, 0, 0, 0.45) 14%,
+    #000 20%
   );
   mask-image: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.16) 0%,
-    rgba(0, 0, 0, 0.45) 42%,
-    #000 60%
+    rgba(0, 0, 0, 0.45) 14%,
+    #000 20%
   );
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-position: calc(var(--mx, 0) * 100%) 0%;
+  mask-position: calc(var(--mx, 0) * 100%) 0%;
 }
 
 .stage[data-loaded] .canvas {
@@ -48,9 +50,26 @@
 
 @media (max-width: 760px) {
   .canvas {
-    /* portrait: solid up top, a ghost layer behind the copy below */
-    -webkit-mask-image: linear-gradient(180deg, #000 20%, rgba(0, 0, 0, 0.15) 36%);
-    mask-image: linear-gradient(180deg, #000 20%, rgba(0, 0, 0, 0.15) 36%);
+    /* portrait: solid up top, a ghost layer behind the copy below — same
+       sliding-mask trick, vertical */
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 6.7%,
+      rgba(0, 0, 0, 0.15) 12%,
+      rgba(0, 0, 0, 0.15) 55%,
+      #000 66.7%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      #000 6.7%,
+      rgba(0, 0, 0, 0.15) 12%,
+      rgba(0, 0, 0, 0.15) 55%,
+      #000 66.7%
+    );
+    -webkit-mask-size: 100% 300%;
+    mask-size: 100% 300%;
+    -webkit-mask-position: 0% calc(var(--mx, 0) * 100%);
+    mask-position: 0% calc(var(--mx, 0) * 100%);
   }
 
   .ghost {

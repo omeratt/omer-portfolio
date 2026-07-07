@@ -96,6 +96,22 @@
   box-shadow: var(--shadow);
 }
 
+/* the voxel window — the project's motif assembles on the canvas behind */
+.motifStage {
+  width: 100%;
+  max-width: 430px;
+  aspect-ratio: 200 / 104;
+}
+
+/* voxels live on the canvas behind the page — the panel becomes a frame */
+:global([data-voxel-stage]) .panel {
+  background: transparent;
+}
+
+:global([data-voxel-stage]) .grid:hover .panel {
+  box-shadow: none;
+}
+
 .proves {
   display: flex;
   align-items: baseline;
