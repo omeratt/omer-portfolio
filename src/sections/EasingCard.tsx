@@ -5,7 +5,7 @@ import { useGSAP } from '@gsap/react';
 import { sampleEase } from '../motion/easings';
 import { useMotion } from '../motion/useMotion';
 import { journey } from '../three/journey';
-import { anchorRef } from '../three/anchorRegistry';
+import { anchorRef, registerAnchor } from '../three/anchorRegistry';
 import { pokeShape } from '../three/sectionAnims';
 import { hasWebGL } from '../three/webgl';
 import styles from './EasingCard.module.css';
@@ -74,7 +74,10 @@ function VoxelCard({ curve, index, delay }: Props) {
 
   return (
     <div
-      ref={rootRef}
+      ref={(el) => {
+        rootRef.current = el;
+        registerAnchor(`zone:${id}`, el);
+      }}
       className={styles.card}
       data-reveal=""
       data-delay={String(delay)}

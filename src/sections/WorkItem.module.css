@@ -108,6 +108,14 @@
   background: transparent;
 }
 
+/* page-colored veil under the copy column — floaters ghost behind text */
+:global([data-voxel-stage]) .text {
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  border-radius: 22px;
+  margin: -20px;
+  padding: 20px;
+}
+
 :global([data-voxel-stage]) .grid:hover .panel {
   box-shadow: none;
 }

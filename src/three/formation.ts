@@ -1,7 +1,7 @@
 import { VOXEL_SIZE, type VoxelSeed } from './oaGrid';
 import { clamp01, type JourneyState, type JourneyWeights } from './journey';
 import type { VoxelCasting } from './formations';
-import type { AnchorXf } from './anchors';
+import type { AnchorXf, Zone } from './anchors';
 import { evalAnim, type AnimOut } from './sectionAnims';
 
 /**
@@ -47,10 +47,21 @@ export interface AnchorSet {
   work: AnchorXf[];
 }
 
+export interface ZoneSet {
+  origin: Zone[];
+  craft: Zone[];
+  work: Zone[];
+}
+
 export interface FormationCtx {
   weights: JourneyWeights;
   gates: SectionGates;
   anchors: AnchorSet;
+  /** panel no-fly boxes — ambient floaters part around these */
+  zones: ZoneSet;
+  /** screen center in group-local space — the float cloud drifts toward it */
+  floatCx: number;
+  floatCy: number;
   /** seconds since the entrance assembly began */
   elapsed: number;
   /** absolute clock — constellation breath, internal demos, float spin */
@@ -78,6 +89,38 @@ const FLOAT_BACK = -3.2;
 
 const ANIM: AnimOut = { dx: 0, dy: 0, dz: 0, scale: 1 };
 
+/** repel(x, y) against a section's zones: floaters part around panels and
+ *  dim while brushing their edges. Continuous in x/y — no popping at the
+ *  boundary — and deterministic per cube via the seed. */
+const REPEL = { x: 0, y: 0, dim: 1 };
+
+function repelFromZones(x: number, y: number, zones: Zone[], seed: number) {
+  let dim = 1;
+  for (let z = 0; z < zones.length; z++) {
+    const zone = zones[z];
+    if (!zone.ok) continue;
+    const dx = x - zone.cx;
+    const dy = y - zone.cy;
+    const u = Math.max(Math.abs(dx) / zone.hw, Math.abs(dy) / zone.hh);
+    if (u >= 1) continue;
+    // smoothstep of the penetration — the value AND its gradient hit zero at
+    // the zone edge, so a cube wobbling across the boundary never jumps
+    const f = 1 - u;
+    const fs = f * f * (3 - 2 * f);
+    const k = 1 + fs * 0.9;
+    // scale straight out from the panel center; a rare dead-center cube
+    // borrows its escape direction from its own seed
+    const bx = Math.abs(dx) + Math.abs(dy) < 1e-3 ? seed * 0.01 : dx;
+    x = zone.cx + bx * k;
+    y = zone.cy + dy * k;
+    dim = Math.min(dim, 1 - 0.45 * fs);
+  }
+  REPEL.x = x;
+  REPEL.y = y;
+  REPEL.dim = dim;
+  return REPEL;
+}
+
 export function writeFormation(
   voxels: VoxelSeed[],
   cast: VoxelCasting,
@@ -94,6 +137,7 @@ export function writeFormation(
   const secDefs = [cast.shapes.origin, cast.shapes.craft, cast.shapes.work];
   const secGates = [ctx.gates.origin, ctx.gates.craft, ctx.gates.work];
   const secAnchors = [ctx.anchors.origin, ctx.anchors.craft, ctx.anchors.work];
+  const secZones = [ctx.zones.origin, ctx.zones.craft, ctx.zones.work];
   const t = ctx.time;
 
   for (let i = 0; i < voxels.length; i++) {
@@ -111,10 +155,13 @@ export function writeFormation(
     const scy = v.y + v.sy * 0.22 + wavY * 0.15;
     const scz = v.z + v.sz * 0.22;
 
-    // ambient float around assembled shapes: lazier, smaller, further back
-    const fx = v.x + v.sx * 0.5 + wavX * 0.34;
-    const fy = v.y + v.sy * 0.5 + wavY * 0.3;
+    // ambient float around assembled shapes: lazier, smaller, further back —
+    // and drifting toward the screen's center, not parked over the letters'
+    // corner, so the atmosphere inhabits the whole page
+    const fx = ctx.floatCx * 0.62 + v.x + v.sx * 0.6 + wavX * 0.34;
+    const fy = ctx.floatCy * 0.55 + v.y + v.sy * 0.5 + wavY * 0.3;
     const fz = v.z + v.sz * 0.34 + FLOAT_BACK;
+    const seed = (v.bias - 0.95) * 2; // ±0.8, deterministic per cube
 
     let px = w.letters * v.x + w.scatter * scx;
     let py = w.letters * v.y + w.scatter * scy;
@@ -128,11 +175,13 @@ export function writeFormation(
       const ws = secW[s];
       if (ws < 5e-4) continue;
 
-      // default: this cube is atmosphere for the section
-      let ax = fx;
-      let ay = fy;
+      // default: this cube is atmosphere for the section — parting around
+      // the section's panels so it never crowds an assembled shape
+      const rep = repelFromZones(fx, fy, secZones[s], seed);
+      let ax = rep.x;
+      let ay = rep.y;
       let az = fz;
-      let ascl = FLOAT_SCALE;
+      let ascl = FLOAT_SCALE * rep.dim;
       let amixA = orange;
       let amixH = 0;
       let aloose = 0.55;

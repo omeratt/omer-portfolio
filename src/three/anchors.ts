@@ -20,6 +20,69 @@ export interface AnchorXf {
 
 export const emptyAnchor = (): AnchorXf => ({ ok: false, cx: 0, cy: 0, cz: 0, s: 0 });
 
+/**
+ * A no-fly box for ambient floaters — the full panel/card rect (shape AND
+ * its caption/text), in group-local space. Floaters part around these so
+ * assembled shapes stay readable.
+ */
+export interface Zone {
+  ok: boolean;
+  cx: number;
+  cy: number;
+  /** half extents, group-local */
+  hw: number;
+  hh: number;
+}
+
+export const emptyZone = (): Zone => ({ ok: false, cx: 0, cy: 0, hw: 0, hh: 0 });
+
+/** margin around the rect, in CSS px — floaters clear the frame, not hug it */
+const ZONE_PAD = 56;
+
+export function resolveZone(
+  id: string,
+  camera: THREE.PerspectiveCamera,
+  group: THREE.Object3D,
+  vpW: number,
+  vpH: number,
+  out: Zone,
+): Zone {
+  const el = getAnchorEl(id);
+  if (!el || !el.isConnected) {
+    out.ok = false;
+    return out;
+  }
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) {
+    out.ok = false;
+    return out;
+  }
+
+  NDC.set(
+    ((rect.left + rect.width / 2) / vpW) * 2 - 1,
+    -((rect.top + rect.height / 2) / vpH) * 2 + 1,
+  );
+  RAY.setFromCamera(NDC, camera);
+  PLANE.setFromNormalAndCoplanarPoint(PLANE.normal.set(0, 0, 1), group.getWorldPosition(WORLD));
+  if (!RAY.ray.intersectPlane(PLANE, HIT)) {
+    out.ok = false;
+    return out;
+  }
+
+  const dist = camera.position.distanceTo(HIT);
+  const worldPerPx = (2 * dist * Math.tan((camera.fov * Math.PI) / 360)) / vpH;
+  const groupScale = group.getWorldScale(SCALE).x || 1;
+  const perPx = worldPerPx / groupScale;
+
+  group.worldToLocal(HIT);
+  out.ok = true;
+  out.cx = HIT.x;
+  out.cy = HIT.y;
+  out.hw = (rect.width / 2 + ZONE_PAD) * perPx;
+  out.hh = (rect.height / 2 + ZONE_PAD) * perPx;
+  return out;
+}
+
 const RAY = new THREE.Raycaster();
 const NDC = new THREE.Vector2();
 const PLANE = new THREE.Plane();

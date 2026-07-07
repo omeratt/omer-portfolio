@@ -8,7 +8,7 @@ import { useReveal } from '../motion/useReveal';
 import { useDrift } from '../motion/useDrift';
 import { useMotion } from '../motion/useMotion';
 import { journey } from '../three/journey';
-import { anchorRef } from '../three/anchorRegistry';
+import { anchorRef, registerAnchor } from '../three/anchorRegistry';
 import { hasWebGL } from '../three/webgl';
 import styles from './Story.module.css';
 
@@ -77,7 +77,15 @@ export default function Story() {
               B.Sc. Software Engineering · graduated with honors
             </p>
           </div>
-          <figure ref={homageRef} className={styles.homage} data-reveal="" data-delay="0.15">
+          <figure
+            ref={(el) => {
+              homageRef.current = el;
+              registerAnchor('zone:origin-grid', el);
+            }}
+            className={styles.homage}
+            data-reveal=""
+            data-delay="0.15"
+          >
             {voxel ? (
               /* the voxel swarm assembles the 2022 grid inside this window */
               <div ref={anchorRef('origin-grid')} className={styles.voxelGrid} aria-hidden="true" />

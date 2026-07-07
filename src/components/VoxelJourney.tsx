@@ -5,12 +5,30 @@ import { useGSAP } from '@gsap/react';
 import GridMark from './GridMark';
 import { useMotion } from '../motion/useMotion';
 import { journey, journeyWeights, clamp01, type JourneyState } from '../three/journey';
+import { getAnchorEl } from '../three/anchorRegistry';
 import { hasWebGL } from '../three/webgl';
 import type { BlastTrigger } from '../three/blastSim';
 import styles from './VoxelJourney.module.css';
 
 // three.js lives in its own chunk — the copy never waits for it
 const HeroCanvas = lazy(() => import('../three/HeroCanvas'));
+
+/**
+ * Frosted-glass panes, one per shape panel. They live INSIDE the stage,
+ * painted below the canvas: the glass blurs the page texture behind the
+ * frame while the voxel shapes render crisply on top of it. Radii mirror
+ * the DOM panels they shadow.
+ */
+const GLASS_PANES = [
+  { id: 'origin-grid', radius: 24 },
+  { id: 'craft-0', radius: 20 },
+  { id: 'craft-1', radius: 20 },
+  { id: 'craft-2', radius: 20 },
+  { id: 'work-0', radius: 22 },
+  { id: 'work-1', radius: 22 },
+  { id: 'work-2', radius: 22 },
+  { id: 'work-3', radius: 22 },
+] as const;
 
 /** journey dials per chapter when reduced motion snaps between poses */
 const REDUCED_POSES: Record<string, Partial<JourneyState>> = {
@@ -32,8 +50,39 @@ export default function VoxelJourney() {
   const blastRef = useRef<BlastTrigger | null>(null);
   const activeRef = useRef(true);
   const stageRef = useRef<HTMLDivElement>(null);
+  const glassRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const webgl = useMemo(hasWebGL, []);
+
+  // the glass panes shadow their panels' rects every frame — through scroll,
+  // resize, hover lifts and the sections' drift parallax
+  useEffect(() => {
+    const layer = glassRef.current;
+    if (!webgl || !layer) return;
+    const panes = Array.from(layer.children) as HTMLElement[];
+    const sync = () => {
+      const vh = window.innerHeight;
+      for (let i = 0; i < panes.length; i++) {
+        const src = getAnchorEl(`zone:${GLASS_PANES[i].id}`);
+        const pane = panes[i];
+        if (!src || !src.isConnected) {
+          pane.style.visibility = 'hidden';
+          continue;
+        }
+        const r = src.getBoundingClientRect();
+        if (r.width < 2 || r.bottom < -40 || r.top > vh + 40) {
+          pane.style.visibility = 'hidden';
+          continue;
+        }
+        pane.style.visibility = 'visible';
+        pane.style.transform = `translate3d(${r.left}px, ${r.top}px, 0)`;
+        pane.style.width = `${r.width}px`;
+        pane.style.height = `${r.height}px`;
+      }
+    };
+    gsap.ticker.add(sync);
+    return () => gsap.ticker.remove(sync);
+  }, [webgl]);
 
   // panels advertise themselves as voxel windows (transparent surfaces)
   useEffect(() => {
@@ -152,6 +201,17 @@ export default function VoxelJourney() {
   return (
     <div ref={stageRef} className={styles.stage} data-loaded={loaded || undefined} aria-hidden="true">
       <GridMark cell={22} tone="ghost" className={styles.ghost} />
+      {webgl && (
+        <div ref={glassRef} className={styles.glassLayer}>
+          {GLASS_PANES.map((pane) => (
+            <div
+              key={pane.id}
+              className={styles.glass}
+              style={{ borderRadius: pane.radius, visibility: 'hidden' }}
+            />
+          ))}
+        </div>
+      )}
       {webgl && (
         <Suspense fallback={null}>
           <div className={styles.canvas}>

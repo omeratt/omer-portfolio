@@ -8,7 +8,7 @@ import PaginationMotif from './motifs/PaginationMotif';
 import MergeMotif from './motifs/MergeMotif';
 import { useMotion } from '../motion/useMotion';
 import { journey } from '../three/journey';
-import { anchorRef } from '../three/anchorRegistry';
+import { anchorRef, registerAnchor } from '../three/anchorRegistry';
 import { hasWebGL } from '../three/webgl';
 import type { MotifKind, Project } from '../data/projects';
 import styles from './WorkItem.module.css';
@@ -81,7 +81,13 @@ export default function WorkItem({ project, index, flip }: Props) {
           </div>
         </div>
         <figure className={styles.visual} data-reveal="" data-delay="0.12">
-          <div ref={panelRef} className={styles.panel}>
+          <div
+            ref={(el) => {
+              panelRef.current = el;
+              registerAnchor(`zone:work-${index}`, el);
+            }}
+            className={styles.panel}
+          >
             {voxel ? (
               /* the voxel window — this project's motif assembles in here */
               <div

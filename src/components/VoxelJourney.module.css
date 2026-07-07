@@ -36,6 +36,37 @@
   opacity: 1;
 }
 
+/* frosted panes under the voxels: each pane shadows one shape panel's rect.
+   Painted before the canvas, so assembled shapes stay crisp ON TOP of the
+   glass while the page texture behind the frame softens away. */
+.glassLayer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.stage[data-loaded] .glassLayer {
+  opacity: 1;
+}
+
+.glass {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, #ffffff 9%, transparent),
+      transparent 46%
+    ),
+    color-mix(in srgb, var(--bg-raise) 52%, transparent);
+  -webkit-backdrop-filter: blur(9px) saturate(1.06);
+  backdrop-filter: blur(9px) saturate(1.06);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 12%, transparent);
+}
+
 .ghost {
   position: absolute;
   top: 50%;

@@ -4,10 +4,10 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { buildVoxels, mulberry32, VOXEL_SIZE } from './oaGrid';
 import { simFrame, composeFromState, pointerOnMonogram, type SimCtx } from './voxelSim';
-import { computeGates, createGates, writeFormation, type AnchorSet } from './formation';
+import { computeGates, createGates, writeFormation, type AnchorSet, type ZoneSet } from './formation';
 import { clamp01, journey, journeyWeights } from './journey';
 import { buildCasting } from './formations';
-import { emptyAnchor, resolveAnchor } from './anchors';
+import { emptyAnchor, emptyZone, resolveAnchor, resolveZone } from './anchors';
 import { consumePokes, shapeAssembled, shapeDisassembled } from './sectionAnims';
 import { createBlastState, igniteBlast, stepBlast, type BlastTrigger } from './blastSim';
 import { useVoxelPaint, type PaintMix } from './useVoxelPaint';
@@ -59,12 +59,20 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
     craft: [emptyAnchor(), emptyAnchor(), emptyAnchor()],
     work: [emptyAnchor(), emptyAnchor(), emptyAnchor(), emptyAnchor()],
   });
+  const zones = useRef<ZoneSet>({
+    origin: [emptyZone()],
+    craft: [emptyZone(), emptyZone(), emptyZone()],
+    work: [emptyZone(), emptyZone(), emptyZone(), emptyZone()],
+  });
   const gates = useRef(createGates());
   const prevGates = useRef(createGates());
   const ctx = useRef<SimCtx>({
     weights: journeyWeights(journey),
     gates: gates.current,
     anchors: anchors.current,
+    zones: zones.current,
+    floatCx: 0,
+    floatCy: 0,
     elapsed: 0,
     time: 0,
     reduced,
@@ -157,11 +165,13 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
     }
     consumePokes(t);
 
-    // glue each active section's shapes to their DOM panels
+    // glue each active section's shapes to their DOM panels, and refresh the
+    // matching no-fly zones the ambient floaters part around
     const cam = camera as THREE.PerspectiveCamera;
     for (const key of SECTION_KEYS) {
       const active = w[key] > 5e-4;
       const set = anchors.current[key];
+      const zset = zones.current[key];
       const shapes = casting.shapes[key];
       for (let k = 0; k < set.length; k++) {
         if (active) {
@@ -175,12 +185,19 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
             size.height,
             set[k],
           );
+          resolveZone(`zone:${SHAPE_IDS[key][k]}`, cam, group, size.width, size.height, zset[k]);
         } else {
           set[k].ok = false;
+          zset[k].ok = false;
         }
       }
     }
     mixRef.current.active = w.origin + w.craft + w.work > 5e-4;
+
+    // screen center, in group-local space — the float cloud's gravity well.
+    // Rotation is gated off while sections own the swarm, so this is exact.
+    c.floatCx = -group.position.x / Math.max(1e-3, scale);
+    c.floatCy = -group.position.y / Math.max(1e-3, scale);
 
     if (import.meta.env.DEV) {
       (window as unknown as { __oaDebug?: object }).__oaDebug = {

@@ -65,6 +65,16 @@
   background: transparent;
 }
 
+/* a whisper of page-colored veil under the copy: floaters passing behind
+   the text dim to ghosts instead of competing with the words. Same color
+   as the page, so the layer itself is invisible — only its effect shows. */
+:global([data-voxel-stage]) .copy {
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  border-radius: 22px;
+  margin: -20px;
+  padding: 20px;
+}
+
 .caption {
   display: flex;
   flex-direction: column;
