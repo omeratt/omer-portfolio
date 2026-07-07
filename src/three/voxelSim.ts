@@ -45,7 +45,8 @@ export function simFrame(
     }
 
     const settle = settleOf(voxels[i], ctx);
-    const s = size * (0.25 + 0.75 * clamp01(settle));
+    // scattered cubes read smaller — the cloud recedes, a shape steps forward
+    const s = size * (0.25 + 0.75 * clamp01(settle)) * (1 - ctx.weights.scatter * 0.22);
     E.set(outRot[i3], outRot[i3 + 1], outRot[i3 + 2]);
     Q.setFromEuler(E);
     P.set(outPos[i3], outPos[i3 + 1], outPos[i3 + 2]);

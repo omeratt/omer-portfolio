@@ -69,3 +69,40 @@
     width: 100%;
   }
 }
+
+/* ---- pinned scene (keep in lockstep with SCENE_MQ in scene.ts) ---- */
+@media (min-width: 900px) and (min-height: 680px) and (prefers-reduced-motion: no-preference) {
+  .section {
+    position: relative;
+    height: 100svh;
+    padding-block: 0;
+    display: flex;
+    align-items: center;
+    overflow: clip;
+  }
+
+  .section > :global(.wrap) {
+    width: 100%;
+    padding-top: var(--header-h);
+  }
+
+  .grid {
+    align-items: center;
+    gap: clamp(36px, 5vw, 84px);
+  }
+
+  .copy {
+    gap: clamp(10px, 1.7vh, 20px);
+  }
+
+  .copy p {
+    font-size: clamp(0.88rem, 1.6vh, 1.02rem);
+    line-height: 1.66;
+  }
+
+  .homage {
+    position: static;
+    padding: clamp(18px, 2.6vw, 36px);
+    gap: 16px;
+  }
+}

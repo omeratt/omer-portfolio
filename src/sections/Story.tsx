@@ -1,13 +1,50 @@
+import gsap from 'gsap';
 import SectionHeading from '../components/SectionHeading';
 import ActionLink from '../components/ActionLink';
 import GridMark from '../components/GridMark';
 import { useReveal } from '../motion/useReveal';
 import { useDrift } from '../motion/useDrift';
+import { useScene, pinScene, headingOverture, beat, dim, sceneExit } from '../motion/scene';
 import styles from './Story.module.css';
 
 export default function Story() {
   const ref = useReveal<HTMLElement>();
   useDrift(ref);
+
+  // the pinned scene: the chapter title opens alone, then the story arrives
+  // line by line — the homage grid builds itself the moment 2022 is spoken
+  useScene(ref, (section) => {
+    const body = section.querySelector<HTMLElement>('[data-story-body]');
+    const copy = gsap.utils.toArray<HTMLElement>('[data-story-body] p', section);
+    const figure = section.querySelector<HTMLElement>('figure');
+    const spans = section.querySelectorAll<HTMLElement>('[data-grid-build] span');
+
+    const tl = pinScene(section, 3.4);
+    const head = headingOverture(tl, section, 'flat');
+    copy.forEach((p, i) => {
+      beat(tl, p, i === 0 ? 'seat+=0.15' : '+=0.3');
+      if (i > 0) dim(tl, copy[i - 1], '<+=0.1');
+      if (i === 3 && figure) {
+        // "one night in 2022" — the first build assembles beside the words
+        beat(tl, figure, '<+=0.2');
+        tl.fromTo(
+          spans,
+          { autoAlpha: 0, scale: 0.55 },
+          {
+            autoAlpha: 1,
+            scale: 1,
+            duration: 0.5,
+            ease: 'arc',
+            stagger: { each: 0.012, from: 'random' },
+            immediateRender: false,
+          },
+          '<+=0.15',
+        );
+      }
+    });
+    tl.to({}, { duration: 0.5 });
+    sceneExit(tl, [body, head], 'flat');
+  });
 
   return (
     <section id="origin" ref={ref} className={styles.section} aria-labelledby="origin-title">
@@ -18,7 +55,7 @@ export default function Story() {
           lines={['It started', 'with a game']}
           id="origin-title"
         />
-        <div className={styles.grid}>
+        <div className={styles.grid} data-story-body="">
           <div className={styles.copy}>
             <p data-reveal="">
               2004. I was ten, and someone else&rsquo;s game wasn&rsquo;t enough — so I
@@ -46,7 +83,7 @@ export default function Story() {
               B.Sc. Software Engineering · graduated with honors
             </p>
           </div>
-          <figure className={styles.homage} data-reveal="" data-delay="0.15">
+          <figure className={styles.homage} data-reveal="">
             <GridMark cell={11} tone="heritage" build className={styles.homageGrid} />
             <figcaption className={styles.caption}>
               <span className="label">2022 — the first build</span>

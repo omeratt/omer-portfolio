@@ -23,3 +23,28 @@
     max-width: 480px;
   }
 }
+
+/* ---- pinned scene (keep in lockstep with SCENE_MQ in scene.ts) ---- */
+@media (min-width: 900px) and (min-height: 680px) and (prefers-reduced-motion: no-preference) {
+  .section {
+    position: relative;
+    height: 100svh;
+    padding-block: 0;
+    display: flex;
+    align-items: center;
+    overflow: clip;
+  }
+
+  .section > :global(.wrap) {
+    width: 100%;
+    padding-top: var(--header-h);
+  }
+
+  .intro {
+    margin-bottom: clamp(22px, 3.5vh, 42px);
+  }
+
+  .cards {
+    margin-bottom: clamp(16px, 2.6vh, 30px);
+  }
+}

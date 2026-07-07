@@ -15,3 +15,28 @@
   align-items: center;
   gap: 32px;
 }
+
+/* ---- pinned scene (keep in lockstep with SCENE_MQ in scene.ts) ---- */
+@media (min-width: 900px) and (min-height: 680px) and (prefers-reduced-motion: no-preference) {
+  .section {
+    position: relative;
+    height: 100svh;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    overflow: clip;
+  }
+
+  .section > :global(.wrap) {
+    width: 100%;
+    padding-top: var(--header-h);
+  }
+
+  .pitch {
+    margin-bottom: clamp(26px, 4.5vh, 56px);
+  }
+
+  .emailBlock {
+    margin-bottom: clamp(28px, 5vh, 56px);
+  }
+}

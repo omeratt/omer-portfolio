@@ -37,6 +37,10 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   // Lenis drives window scroll; GSAP's ticker drives Lenis.
   useEffect(() => {
     if (reduced) return;
+    // pinned scenes + browser scroll restoration fight over the landing
+    // position and stamp the scrubbed timelines at transient offsets —
+    // let ScrollTrigger own restoration instead
+    ScrollTrigger.clearScrollMemory('manual');
     const instance = new Lenis({ lerp: 0.115, smoothWheel: true });
     const raf = (time: number) => instance.raf(time * 1000);
     gsap.ticker.add(raf);
@@ -58,6 +62,16 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       scrollTo: (selector: string) => {
         const el = document.querySelector<HTMLElement>(selector);
         if (!el) return;
+        // pinned chapters: land just inside the pin, where the scene opens
+        const pinned = ScrollTrigger.getAll().find((st) => st.trigger === el && st.vars.pin);
+        if (pinned) {
+          if (lenis) {
+            lenis.scrollTo(pinned.start + 4, { duration: 1.25, easing: easeExpoOut });
+          } else {
+            window.scrollTo(0, pinned.start + 4);
+          }
+          return;
+        }
         // land on the section's heading, not its breathing room — skip most
         // of the top padding so the arrival feels placed, not approximate
         const pad = parseFloat(getComputedStyle(el).paddingTop) || 0;

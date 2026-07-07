@@ -71,10 +71,13 @@
   will-change: transform;
 }
 
+/* visibility too: unrevealed content must not catch clicks or tab focus
+   (GSAP autoAlpha flips visibility back on when a beat lands) */
 [data-reveal],
 [data-entrance],
 [data-dot] {
   opacity: 0;
+  visibility: hidden;
 }
 
 [data-rule] {
@@ -97,5 +100,6 @@
   [data-dot],
   [data-grid-build] span {
     opacity: 1;
+    visibility: visible;
   }
 }

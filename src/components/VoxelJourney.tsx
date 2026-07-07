@@ -4,6 +4,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import GridMark from './GridMark';
 import { useMotion } from '../motion/useMotion';
+import { journey } from '../motion/journey';
+import { FLOW_MQ } from '../motion/scene';
 import { journeyWeights, type JourneyState } from '../three/formation';
 import type { BlastTrigger } from '../three/blastSim';
 import styles from './VoxelJourney.module.css';
@@ -20,17 +22,18 @@ function hasWebGL(): boolean {
   }
 }
 
-/** rises over the first quarter, holds, lets go over the last fifth */
-const plateau = (p: number) => Math.max(0, Math.min(1, Math.min(p / 0.24, (1 - p) / 0.2)));
-
 /**
  * The monogram's stage — fixed behind the whole page. Each chapter claims
  * a shape: letters → the flat 2022 grid → a shot-arc → a spinning ball →
- * letters again. Between chapters the cubes drift as a loose constellation.
+ * letters again. On scene screens the pinned chapter timelines write the
+ * dials (src/motion/scene.ts); on small screens the flow ScrollTriggers
+ * below do. Either way, a shape completes exactly as its chapter's title
+ * settles and breaks apart as the chapter clears the stage — between
+ * chapters the cubes exhale into a wide constellation.
  */
 export default function VoxelJourney() {
   const { reduced } = useMotion();
-  const journeyRef = useRef<JourneyState>({ hero: 1, flat: 0, arc: 0, sphere: 0, contact: 0 });
+  const journeyRef = useRef<JourneyState>(journey);
   const blastRef = useRef<BlastTrigger | null>(null);
   const activeRef = useRef(true);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -71,47 +74,81 @@ export default function VoxelJourney() {
     () => {
       const stage = stageRef.current;
       if (reduced || !stage) return;
-      const j = journeyRef.current;
-      const fade = gsap.quickTo(stage, 'opacity', { duration: 0.35, ease: 'power2' });
-      const apply = () => {
-        const w = journeyWeights(j);
-        const portrait = window.innerHeight > window.innerWidth * 1.15;
-        const contactShare = j.contact / Math.max(1e-3, j.hero + j.contact);
-        const lettersO = 1 + ((portrait ? 0.55 : 0.9) - 1) * contactShare;
-        fade(
-          w.letters * lettersO + w.flat * 0.52 + w.arc * 0.36 +
-          w.sphere * 0.32 + w.scatter * 0.2,
-        );
-      };
-      // real elements, never selector strings — the useGSAP scope would
-      // resolve strings inside the stage div, silently breaking every trigger
-      const chapter = (
-        id: string,
-        start: string,
-        end: string,
-        write: (p: number) => void,
-      ) => {
-        const trigger = document.getElementById(id);
-        if (!trigger) return;
-        ScrollTrigger.create({
-          trigger, start, end, scrub: true,
-          // onRefresh too: resizes and late layout shifts must never leave
-          // a stale dial behind
-          onUpdate: (st) => { write(st.progress); apply(); },
-          onRefresh: (st) => { write(st.progress); apply(); },
-        });
-      };
 
-      chapter('hero', 'top top', 'bottom 42%', (p) => { j.hero = 1 - p; });
-      chapter('origin', 'top 78%', 'bottom 58%', (p) => { j.flat = plateau(p); });
-      chapter('craft', 'top 80%', 'bottom 52%', (p) => { j.arc = plateau(p); });
-      chapter('work', 'top 80%', 'bottom 48%', (p) => { j.sphere = plateau(p); });
-      chapter('contact', 'top 85%', 'top 28%', (p) => { j.contact = p; });
+      // scene timelines and flow triggers both write the dials; one ticker
+      // maps them to stage opacity so every writer stays in sync
+      const fade = gsap.quickTo(stage, 'opacity', { duration: 0.35, ease: 'power2' });
+      let last = -1;
+      const apply = () => {
+        const w = journeyWeights(journey);
+        const portrait = window.innerHeight > window.innerWidth * 1.15;
+        const contactShare = journey.contact / Math.max(1e-3, journey.hero + journey.contact);
+        const lettersO = 1 + ((portrait ? 0.55 : 0.9) - 1) * contactShare;
+        const o =
+          w.letters * lettersO + w.flat * 0.52 + w.arc * 0.36 +
+          w.sphere * 0.32 + w.scatter * 0.22;
+        if (Math.abs(o - last) > 0.003) {
+          last = o;
+          fade(o);
+        }
+      };
+      gsap.ticker.add(apply);
+
+      // flowing fallback (small / short screens): the dials ride
+      // ScrollTriggers. Real elements, never selector strings — the useGSAP
+      // scope would resolve strings inside the stage div, silently breaking
+      // every trigger.
+      const mm = gsap.matchMedia();
+      mm.add(FLOW_MQ, () => {
+        const scrub = (
+          trigger: Element,
+          start: string,
+          end: string,
+          write: (p: number) => void,
+        ) => {
+          ScrollTrigger.create({
+            trigger, start, end, scrub: true,
+            // onRefresh too: resizes and late layout shifts must never leave
+            // a stale dial behind
+            onUpdate: (st) => write(st.progress),
+            onRefresh: (st) => write(st.progress),
+          });
+        };
+
+        // rise rides the chapter heading (shape lands with the title),
+        // release rides the section's exit (shape shatters with the words)
+        const dial = (
+          key: 'flat' | 'arc' | 'sphere' | 'contact',
+          sectionId: string,
+          hold = false,
+        ) => {
+          const section = document.getElementById(sectionId);
+          if (!section) return;
+          const head = section.querySelector('[data-lines-root]') ?? section;
+          let rise = 0;
+          let release = 0;
+          const write = () => { journey[key] = rise * (1 - release); };
+          scrub(head, 'top 88%', 'top 42%', (p) => { rise = p; write(); });
+          if (!hold) {
+            scrub(section, 'bottom 88%', 'bottom 55%', (p) => { release = p; write(); });
+          }
+        };
+
+        const hero = document.getElementById('hero');
+        // letters let go early — the constellation needs a window to breathe
+        if (hero) scrub(hero, 'top top', 'bottom 62%', (p) => { journey.hero = 1 - p; });
+        dial('flat', 'origin');
+        dial('arc', 'craft');
+        dial('sphere', 'work');
+        dial('contact', 'contact', true);
+      });
 
       if (import.meta.env.DEV) {
         // live journey dials for debugging: window.__oaJourney
-        (window as unknown as { __oaJourney?: JourneyState }).__oaJourney = j;
+        (window as unknown as { __oaJourney?: JourneyState }).__oaJourney = journey;
       }
+
+      return () => gsap.ticker.remove(apply);
     },
     { dependencies: [reduced], scope: stageRef },
   );

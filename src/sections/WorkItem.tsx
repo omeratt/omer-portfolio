@@ -20,7 +20,7 @@ export default function WorkItem({ project, flip }: { project: Project; flip: bo
   return (
     <li className={styles.item} data-flip={flip || undefined}>
       <div className="hairline" data-rule="" />
-      <article className={styles.grid}>
+      <article className={styles.grid} data-seq="">
         <div className={styles.text}>
           <span className={`label ${styles.index}`} data-reveal="">
             {project.index}
@@ -46,7 +46,7 @@ export default function WorkItem({ project, flip }: { project: Project; flip: bo
             ))}
           </div>
         </div>
-        <figure className={styles.visual} data-reveal="" data-delay="0.12">
+        <figure className={styles.visual} data-reveal="">
           <div className={styles.panel}>
             <Motif />
           </div>

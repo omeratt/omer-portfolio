@@ -8,3 +8,11 @@
 .title {
   font-size: var(--fs-h2);
 }
+
+/* ---- pinned scene (keep in lockstep with SCENE_MQ in scene.ts) ---- */
+@media (min-width: 900px) and (min-height: 680px) and (prefers-reduced-motion: no-preference) {
+  .head {
+    margin-bottom: clamp(26px, 4.5vh, 52px);
+    will-change: transform;
+  }
+}

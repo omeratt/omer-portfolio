@@ -118,3 +118,15 @@
     order: 0;
   }
 }
+
+/* ---- pinned scene (keep in lockstep with SCENE_MQ in scene.ts) ---- */
+@media (min-width: 900px) and (min-height: 680px) and (prefers-reduced-motion: no-preference) {
+  .item {
+    padding-top: 0;
+  }
+
+  .grid {
+    padding-block: 0;
+    gap: clamp(32px, 4.5vw, 72px);
+  }
+}

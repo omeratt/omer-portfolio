@@ -2,6 +2,8 @@ import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useMotion } from '../motion/useMotion';
+import { journey } from '../motion/journey';
+import { SCENE_MQ, FLOW_MQ, pinScene } from '../motion/scene';
 import styles from './Hero.module.css';
 
 export default function Hero() {
@@ -58,6 +60,49 @@ export default function Hero() {
           },
         });
       }
+
+      // the opening hands the page to the story — on scene screens the hero
+      // pins and empties in place; on small screens it lifts away in flow
+      const inner = root.firstElementChild;
+      const mm = gsap.matchMedia();
+      mm.add(SCENE_MQ, () => {
+        const tl = pinScene(root, 1.1);
+        tl.to({}, { duration: 0.45 }); // the letters own the opening
+        if (inner) {
+          // fromTo with explicit endpoints — stray refresh renders self-heal
+          tl.fromTo(
+            inner,
+            { y: 0, autoAlpha: 1, scale: 1 },
+            {
+              y: -70,
+              autoAlpha: 0,
+              scale: 0.97,
+              transformOrigin: 'center top',
+              duration: 0.9,
+              ease: 'power2.in',
+              immediateRender: false,
+            },
+          );
+        }
+        tl.fromTo(
+          journey,
+          { hero: 1 },
+          { hero: 0, duration: 1.1, ease: 'power1.inOut', immediateRender: false },
+          '<+=0.15',
+        );
+        tl.to({}, { duration: 0.35 });
+      });
+      mm.add(FLOW_MQ, () => {
+        if (!inner) return;
+        gsap.to(inner, {
+          y: -72,
+          autoAlpha: 0,
+          scale: 0.97,
+          transformOrigin: 'center top',
+          ease: 'none',
+          scrollTrigger: { trigger: root, start: '10% top', end: '62% top', scrub: 0.6 },
+        });
+      });
     },
     { dependencies: [ready, reduced], scope: sectionRef },
   );

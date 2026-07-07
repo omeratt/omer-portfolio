@@ -3,11 +3,27 @@ import ActionLink from '../components/ActionLink';
 import CopyEmail from '../components/CopyEmail';
 import { useReveal } from '../motion/useReveal';
 import { useDrift } from '../motion/useDrift';
+import { useScene, pinScene, headingOverture, beat } from '../motion/scene';
 import styles from './Contact.module.css';
 
 export default function Contact() {
   const ref = useReveal<HTMLElement>();
   useDrift(ref);
+
+  // the closing scene: the letters reassemble with the title and never
+  // leave again — the story ends the way it began, whole
+  useScene(ref, (section) => {
+    const pitch = section.querySelector<HTMLElement>(`.${styles.pitch}`);
+    const email = section.querySelector<HTMLElement>(`.${styles.emailBlock}`);
+    const socials = section.querySelector<HTMLElement>(`.${styles.socials}`);
+
+    const tl = pinScene(section, 1.9);
+    headingOverture(tl, section, 'contact');
+    beat(tl, pitch, 'seat+=0.15');
+    beat(tl, email, '+=0.25');
+    beat(tl, socials, '+=0.2');
+    tl.to({}, { duration: 0.6 });
+  });
 
   return (
     <section
@@ -15,6 +31,7 @@ export default function Contact() {
       ref={ref}
       className={styles.section}
       aria-labelledby="contact-title"
+      data-story-hold=""
     >
       <div className="wrap">
         <SectionHeading

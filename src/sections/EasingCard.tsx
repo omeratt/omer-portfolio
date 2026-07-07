@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { sampleEase } from '../motion/easings';
 import { useMotion } from '../motion/useMotion';
+import { FLOW_MQ } from '../motion/scene';
 import styles from './EasingCard.module.css';
 
 export interface Curve {
@@ -21,7 +22,7 @@ const PY = 26;
 const toX = (t: number) => PX + t * (W - PX * 2);
 const toY = (v: number) => H - PY - v * (H - PY * 2);
 
-export default function EasingCard({ curve, delay }: { curve: Curve; delay: number }) {
+export default function EasingCard({ curve }: { curve: Curve }) {
   const { reduced } = useMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
@@ -41,18 +42,27 @@ export default function EasingCard({ curve, delay }: { curve: Curve; delay: numb
     () => {
       const ball = ballRef.current;
       const slider = sliderRef.current;
-      if (!ball || !slider) return;
+      const root = rootRef.current;
+      if (!ball || !slider || !root) return;
       if (reduced) {
         gsap.set(ball, { attr: { cx: toX(1), cy: toY(1) } });
         gsap.set(slider, { x: () => (trackRef.current?.clientWidth ?? 120) - 12 });
         return;
       }
-      ScrollTrigger.create({
-        trigger: rootRef.current,
-        start: 'top 82%',
-        once: true,
-        onEnter: () => play(),
+      // pinned Craft scene fires this the moment the card finishes landing
+      const onReplay = () => play();
+      root.addEventListener('replay-demo', onReplay);
+      // flowing fallback: auto-play once when the card scrolls into view
+      const mm = gsap.matchMedia();
+      mm.add(FLOW_MQ, () => {
+        ScrollTrigger.create({
+          trigger: root,
+          start: 'top 82%',
+          once: true,
+          onEnter: () => play(),
+        });
       });
+      return () => root.removeEventListener('replay-demo', onReplay);
     },
     { dependencies: [reduced], scope: rootRef },
   );
@@ -84,7 +94,6 @@ export default function EasingCard({ curve, delay }: { curve: Curve; delay: numb
       ref={rootRef}
       className={styles.card}
       data-reveal=""
-      data-delay={String(delay)}
       onPointerEnter={play}
     >
       <div className={styles.top}>

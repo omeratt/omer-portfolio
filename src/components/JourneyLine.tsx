@@ -19,6 +19,10 @@ export default function JourneyLine() {
       const rail = railRef.current;
       const ball = ballRef.current;
       if (reduced || !rail || !ball) return;
+      // the ball stretches with scroll velocity — dribble physics; Lenis
+      // decelerates smoothly, so the last updates ease it back to round
+      const stretch = gsap.quickTo(ball, 'scaleY', { duration: 0.25, ease: 'power2' });
+      const squash = gsap.quickTo(ball, 'scaleX', { duration: 0.25, ease: 'power2' });
       ScrollTrigger.create({
         trigger: document.body,
         start: 'top top',
@@ -26,6 +30,9 @@ export default function JourneyLine() {
         scrub: true,
         onUpdate: (st) => {
           gsap.set(ball, { y: st.progress * (rail.clientHeight - 7) });
+          const k = Math.min(Math.abs(st.getVelocity()) / 9000, 0.85);
+          stretch(1 + k);
+          squash(1 / (1 + k * 0.55));
         },
       });
     },

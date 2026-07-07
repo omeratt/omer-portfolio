@@ -84,7 +84,10 @@ export function writeFormation(
   outRot: Float32Array,
 ) {
   const w = ctx.weights;
-  const wob = w.scatter * 0.18;
+  // the exhale between chapters: the deeper the scatter, the wider the
+  // cloud ranges and the more it breathes
+  const spread = 0.28 + w.scatter * 0.3;
+  const wob = w.scatter * 0.34;
   const spin = ctx.time * 0.22;
   const cosS = Math.cos(spin);
   const sinS = Math.sin(spin);
@@ -95,12 +98,12 @@ export function writeFormation(
     const settle = settleOf(v, ctx);
     const entrance = 1 - settle;
 
-    // constellation: a tight breathing cloud around home
+    // constellation: a breathing cloud around home
     const wx = wob === 0 ? 0 : Math.sin(ctx.time * (0.5 + v.bias * 0.4) + v.delay * 31) * wob;
     const wy = wob === 0 ? 0 : Math.cos(ctx.time * (0.42 + v.bias * 0.33) + v.delay * 47) * wob;
-    const scx = v.x + v.sx * 0.22 + wx;
-    const scy = v.y + v.sy * 0.22 + wy;
-    const scz = v.z + v.sz * 0.22;
+    const scx = v.x + v.sx * spread + wx;
+    const scy = v.y + v.sy * spread + wy;
+    const scz = v.z + v.sz * spread;
 
     // the ball spins in place; a wave travels along the arc
     const sphX = forms.sphere[i3] * cosS + forms.sphere[i3 + 2] * sinS;
