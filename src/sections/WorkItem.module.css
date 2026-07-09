@@ -103,11 +103,6 @@
   aspect-ratio: 200 / 104;
 }
 
-/* voxels live on the canvas behind the page — the panel becomes a frame */
-:global([data-voxel-stage]) .panel {
-  background: transparent;
-}
-
 /* page-colored veil under the copy column — floaters ghost behind text */
 :global([data-voxel-stage]) .text {
   background: color-mix(in srgb, var(--bg) 62%, transparent);

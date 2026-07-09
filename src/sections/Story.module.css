@@ -60,11 +60,6 @@
   aspect-ratio: 12 / 7;
 }
 
-/* voxels live on the canvas behind the page — the panel becomes a frame */
-:global([data-voxel-stage]) .homage {
-  background: transparent;
-}
-
 /* a whisper of page-colored veil under the copy: floaters passing behind
    the text dim to ghosts instead of competing with the words. Same color
    as the page, so the layer itself is invisible — only its effect shows. */

@@ -46,6 +46,12 @@
   --court-hot: rgba(232, 73, 15, 0.18);
   --header-veil: rgba(246, 243, 236, 0.72);
   --shadow: 0 24px 60px -32px rgba(23, 19, 16, 0.3);
+  /* frosted voxel panes — a clearly-present surface, still translucent
+     enough for the under-panel floaters to ghost through */
+  --glass-tint: rgba(253, 251, 246, 0.38);
+  --glass-sheen: rgba(255, 255, 255, 0.16);
+  --glass-sheen-soft: rgba(255, 255, 255, 0.04);
+  --glass-edge: rgba(23, 19, 16, 0.06);
 }
 
 /* Night court, floodlights on */
@@ -64,4 +70,9 @@
   --court-hot: rgba(255, 106, 46, 0.22);
   --header-veil: rgba(11, 11, 13, 0.64);
   --shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.72);
+  /* night glass reads whitish-translucent, so graphite cubes keep contrast */
+  --glass-tint: rgba(255, 255, 255, 0.055);
+  --glass-sheen: rgba(255, 255, 255, 0.15);
+  --glass-sheen-soft: rgba(255, 255, 255, 0.05);
+  --glass-edge: rgba(255, 255, 255, 0.09);
 }

@@ -11,16 +11,22 @@ export interface PaintMix {
   a: Float32Array;
   /** per-voxel blend toward the 2022 heritage yellow (0..1) */
   h: Float32Array;
-  /** the sim raises this whenever section shapes are coloring cubes */
-  active: boolean;
+  /** mirror of underlay.mixVersion — the sim bumps it only when a mix value
+   *  actually changed, so idle frames repaint nothing */
+  version: number;
 }
 
 const TMP = new THREE.Color();
 
 /**
  * Per-instance colors. Two inputs meet here: the theme palette (which glides
- * on toggle) and the per-voxel role mix written by the formation each frame —
- * accent packets, heritage grid cells, orange flecks in the letters.
+ * on toggle) and the per-voxel role mix written by the formation — accent
+ * packets, heritage grid cells, orange flecks in the letters.
+ *
+ * Repaints happen only when something can differ from what's on the GPU:
+ * the theme glide, a mix-version bump, or the mix buffers changing identity
+ * (the back canvas starts on empty placeholders until the sim wires the real
+ * ones — painting must never go idle before valid data existed).
  */
 export function useVoxelPaint(
   meshRef: RefObject<THREE.InstancedMesh | null>,
@@ -33,7 +39,10 @@ export function useVoxelPaint(
     orange: new THREE.Color(SCENE[theme].orange),
     heritage: new THREE.Color(SCENE[theme].heritage),
     dirty: true,
-    wasActive: true,
+  });
+  const seen = useRef<{ version: number; a: Float32Array | null }>({
+    version: -1,
+    a: null,
   });
   const targetCube = useMemo(() => new THREE.Color(SCENE[theme].cube), [theme]);
   const targetOrange = useMemo(() => new THREE.Color(SCENE[theme].orange), [theme]);
@@ -47,10 +56,10 @@ export function useVoxelPaint(
     const mesh = meshRef.current;
     const p = paint.current;
     const mix = mixRef.current;
-    // repaint while the theme glides, while shapes color cubes, and one
-    // extra frame after they let go (to restore the resting palette)
-    if (!mesh || (!p.dirty && !mix.active && !p.wasActive)) return;
-    p.wasActive = mix.active;
+    if (!mesh) return;
+    const valid = mix.a.length === voxels.length && mix.h.length === voxels.length;
+    const changed = mix.version !== seen.current.version || mix.a !== seen.current.a;
+    if (!p.dirty && !(changed && valid)) return;
 
     if (p.dirty) {
       const k = Math.min(1, delta * 5);
@@ -67,14 +76,29 @@ export function useVoxelPaint(
       }
     }
 
+    const firstPaint = mesh.instanceColor === null;
     for (let i = 0; i < voxels.length; i++) {
       TMP.copy(p.cube);
-      const a = mix.a[i];
-      const h = mix.h[i];
-      if (a > 0.001) TMP.lerp(p.orange, Math.min(1, a));
-      if (h > 0.001) TMP.lerp(p.heritage, Math.min(1, h));
+      if (valid) {
+        const a = mix.a[i];
+        const h = mix.h[i];
+        if (a > 0.001) TMP.lerp(p.orange, Math.min(1, a));
+        if (h > 0.001) TMP.lerp(p.heritage, Math.min(1, h));
+      }
       mesh.setColorAt(i, TMP);
     }
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (mesh.instanceColor) {
+      mesh.instanceColor.needsUpdate = true;
+      // the first setColorAt created the attribute — if the material already
+      // compiled without it, the program must rebuild or colors stay ignored
+      if (firstPaint) (mesh.material as THREE.Material).needsUpdate = true;
+    }
+
+    // only a paint with real data counts as consumed — placeholder paints
+    // keep the version pending so the first valid frame repaints
+    if (valid) {
+      seen.current.version = mix.version;
+      seen.current.a = mix.a;
+    }
   });
 }

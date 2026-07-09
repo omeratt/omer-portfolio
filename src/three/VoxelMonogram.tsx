@@ -4,12 +4,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { buildVoxels, mulberry32, VOXEL_SIZE } from './oaGrid';
 import { simFrame, composeFromState, pointerOnMonogram, type SimCtx } from './voxelSim';
-import { computeGates, createGates, writeFormation, type AnchorSet, type ZoneSet } from './formation';
-import { clamp01, journey, journeyWeights } from './journey';
+import { computeGates, createGates, writeFormation, type AnchorSet, type SectionGates, type ZoneSet } from './formation';
+import { clamp01, journey, journeyWeights, type JourneyWeights } from './journey';
 import { buildCasting } from './formations';
 import { emptyAnchor, emptyZone, resolveAnchor, resolveZone } from './anchors';
 import { consumePokes, shapeAssembled, shapeDisassembled } from './sectionAnims';
 import { createBlastState, igniteBlast, stepBlast, type BlastTrigger } from './blastSim';
+import { resetUnderlay, underlay } from './underlay';
 import { useVoxelPaint, type PaintMix } from './useVoxelPaint';
 import { usePointerNdc } from './usePointerNdc';
 import type { Theme } from '../theme/context';
@@ -46,13 +47,14 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
   const fieldPos = useMemo(() => new Float32Array(voxels.length * 3), [voxels]);
   const fieldRot = useMemo(() => new Float32Array(voxels.length * 3), [voxels]);
   const fieldScale = useMemo(() => new Float32Array(voxels.length).fill(1), [voxels]);
+  const fieldBack = useMemo(() => new Float32Array(voxels.length), [voxels]);
   const blast = useRef(createBlastState(voxels.length));
   const rng = useRef(mulberry32(1405));
   const camera = useThree((s) => s.camera);
   const mixRef = useRef<PaintMix>({
     a: new Float32Array(voxels.length),
     h: new Float32Array(voxels.length),
-    active: true,
+    version: 0,
   });
   const anchors = useRef<AnchorSet>({
     origin: [emptyAnchor()],
@@ -90,6 +92,18 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
   }, [geometry, material]);
 
   useVoxelPaint(meshRef, voxels, theme, mixRef);
+
+  // hand the shared buffers to the back layer (the under-glass canvas);
+  // unhook on unmount so an HMR-swapped sim never leaves stale buffers behind
+  useEffect(() => {
+    underlay.count = voxels.length;
+    underlay.pos = fieldPos;
+    underlay.rot = fieldRot;
+    underlay.back = fieldBack;
+    underlay.mixA = mixRef.current.a;
+    underlay.mixH = mixRef.current.h;
+    return resetUnderlay;
+  }, [voxels, fieldPos, fieldRot, fieldBack]);
 
   useEffect(() => {
     blastRef.current = (ndc) => {
@@ -166,7 +180,9 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
     consumePokes(t);
 
     // glue each active section's shapes to their DOM panels, and refresh the
-    // matching no-fly zones the ambient floaters part around
+    // matching no-fly zones the ambient floaters part around. Anchors matter
+    // only while the shape's gate is open — skipping closed gates halves the
+    // per-frame getBoundingClientRect reads while panels approach and leave.
     const cam = camera as THREE.PerspectiveCamera;
     for (const key of SECTION_KEYS) {
       const active = w[key] > 5e-4;
@@ -174,7 +190,7 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
       const zset = zones.current[key];
       const shapes = casting.shapes[key];
       for (let k = 0; k < set.length; k++) {
-        if (active) {
+        if (active && gates.current[key][k] > 0) {
           resolveAnchor(
             SHAPE_IDS[key][k],
             shapes[k].box.w,
@@ -185,14 +201,16 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
             size.height,
             set[k],
           );
-          resolveZone(`zone:${SHAPE_IDS[key][k]}`, cam, group, size.width, size.height, zset[k]);
         } else {
           set[k].ok = false;
+        }
+        if (active) {
+          resolveZone(`zone:${SHAPE_IDS[key][k]}`, cam, group, size.width, size.height, zset[k]);
+        } else {
           zset[k].ok = false;
         }
       }
     }
-    mixRef.current.active = w.origin + w.craft + w.work > 5e-4;
 
     // screen center, in group-local space — the float cloud's gravity well.
     // Rotation is gated off while sections own the swarm, so this is exact.
@@ -200,11 +218,16 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
     c.floatCy = -group.position.y / Math.max(1e-3, scale);
 
     if (import.meta.env.DEV) {
-      (window as unknown as { __oaDebug?: object }).__oaDebug = {
-        anchors: anchors.current,
-        gates: gates.current,
-        weights: w,
+      // stable object — anchors/gates/weights are all reused refs, so the
+      // debug hook costs nothing per frame after the first
+      const dbg = window as unknown as {
+        __oaDebug?: { anchors: AnchorSet; gates: SectionGates; weights: JourneyWeights };
       };
+      if (!dbg.__oaDebug) {
+        dbg.__oaDebug = { anchors: anchors.current, gates: gates.current, weights: w };
+      } else {
+        dbg.__oaDebug.weights = w;
+      }
     }
 
     // shatter physics owns the frame while live — magnetizing to the LIVE
@@ -212,9 +235,15 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
     const b = blast.current;
     if (b.active) {
       c.pointer = null;
-      writeFormation(voxels, casting, c, fieldPos, fieldRot, fieldScale, mixRef.current.a, mixRef.current.h);
+      const blastMix = writeFormation(voxels, casting, c, fieldPos, fieldRot, fieldScale, fieldBack, mixRef.current.a, mixRef.current.h);
+      if (blastMix) underlay.mixVersion++;
+      mixRef.current.version = underlay.mixVersion;
       stepBlast(b, voxels.length, delta, fieldPos, fieldRot);
+      // the shockwave owns every cube at full size on the front layer;
+      // the back layer sits out until the swarm settles home
       composeFromState(mesh, b.pos, b.rot, fieldScale, VOXEL_SIZE);
+      underlay.active = false;
+      underlay.version++;
       return;
     }
 
@@ -223,7 +252,19 @@ export default function VoxelMonogram({ theme, reduced, playing, blastRef }: Pro
         ? pointerOnMonogram(ndc.x, ndc.y, camera, group, pointerVec.current)
         : null;
 
-    simFrame(mesh, voxels, casting, c, VOXEL_SIZE, fieldPos, fieldRot, fieldScale, mixRef.current.a, mixRef.current.h);
+    const mixChanged = simFrame(mesh, voxels, casting, c, VOXEL_SIZE, fieldPos, fieldRot, fieldScale, fieldBack, mixRef.current.a, mixRef.current.h);
+    if (mixChanged) underlay.mixVersion++;
+    mixRef.current.version = underlay.mixVersion;
+
+    // mirror the frame to the back layer (letters / atmosphere, behind text)
+    underlay.active = true;
+    underlay.gx = group.position.x;
+    underlay.gy = group.position.y;
+    underlay.gz = group.position.z;
+    underlay.gs = group.scale.x;
+    underlay.rx = group.rotation.x;
+    underlay.ry = group.rotation.y;
+    underlay.version++;
   });
 
   return (

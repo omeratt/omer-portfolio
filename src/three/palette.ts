@@ -31,11 +31,11 @@ export const SCENE: Record<Theme, ScenePalette> = {
     rimIntensity: 18,
   },
   dark: {
-    cube: '#232327',
+    cube: '#2e2e35',
     orange: '#ff6a2e',
     heritage: '#f7ba3e',
     ambient: '#8f9bd6',
-    ambientIntensity: 0.4,
+    ambientIntensity: 0.52,
     key: '#eef2ff',
     keyIntensity: 2.7,
     rim: '#ff7a3c',

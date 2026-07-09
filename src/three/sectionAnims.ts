@@ -79,7 +79,15 @@ function cardP(id: string, time: number, reduced: boolean): number {
 const PAG_LOOP = 6.84;
 const at = (i: number) => PAG_XS[i];
 
+// poses are pure functions of the clock, and every voxel of a shape asks for
+// the same frame — memoize per time so the hot loop allocates nothing
+const PAG_POSE = { cx: 0, w: 12, alpha: 1, lift: 0 };
+let pagTime = Number.NaN;
+
 function paginationPose(time: number, reduced: boolean) {
+  const key = reduced ? -1 : time;
+  if (key === pagTime) return PAG_POSE;
+  pagTime = key;
   const t = reduced ? 0 : frac(time / PAG_LOOP) * PAG_LOOP;
   let cx = at(0);
   let w = 12;
@@ -118,19 +126,43 @@ function paginationPose(time: number, reduced: boolean) {
   } else if (t < 5.84) {
     cx = at(4) + (at(0) - at(4)) * snapEase((t - 5.09) / 0.75); // long glide home
   }
-  return { cx, w, alpha, lift };
+  PAG_POSE.cx = cx;
+  PAG_POSE.w = w;
+  PAG_POSE.alpha = alpha;
+  PAG_POSE.lift = lift;
+  return PAG_POSE;
 }
 
 /* play squares — anticipation, flight, squash & stretch, settle */
 const PLAY_LOOP = 3.0;
 
+const SQ_POSES = PLAY_SQUARES.map(() => ({ y: 0, sx: 1, sy: 1 }));
+let sqTime = Number.NaN;
+
 function squarePose(k: number, time: number, reduced: boolean) {
+  const key = reduced ? -1 : time;
+  if (key !== sqTime) {
+    sqTime = key;
+    for (let i = 0; i < SQ_POSES.length; i++) computeSquarePose(i, time, reduced, SQ_POSES[i]);
+  }
+  return SQ_POSES[k];
+}
+
+function computeSquarePose(
+  k: number,
+  time: number,
+  reduced: boolean,
+  out: { y: number; sx: number; sy: number },
+) {
   let y = 0;
   let sx = 1;
   let sy = 1;
-  if (reduced) return { y, sx, sy };
+  out.y = y;
+  out.sx = sx;
+  out.sy = sy;
+  if (reduced) return;
   const t = frac(time / PLAY_LOOP) * PLAY_LOOP - k * 0.15;
-  if (t < 0 || t >= 1.05) return { y, sx, sy };
+  if (t < 0 || t >= 1.05) return;
   if (t < 0.12) {
     sy = 1 - 0.16 * cubeIn(t / 0.12);
   } else if (t < 0.34) {
@@ -150,7 +182,9 @@ function squarePose(k: number, time: number, reduced: boolean) {
     sy = 0.8 + 0.2 * p;
     sx = 1.14 - 0.14 * p;
   }
-  return { y, sx, sy };
+  out.y = y;
+  out.sx = sx;
+  out.sy = sy;
 }
 
 /* --------------------------------------------------------------- */

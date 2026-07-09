@@ -1,5 +1,5 @@
 import { VOXEL_SIZE, type VoxelSeed } from './oaGrid';
-import { clamp01, type JourneyState, type JourneyWeights } from './journey';
+import { clamp01, type JourneyWeights, type SectionGates } from './journey';
 import type { VoxelCasting } from './formations';
 import type { AnchorXf, Zone } from './anchors';
 import { evalAnim, type AnimOut } from './sectionAnims';
@@ -15,31 +15,10 @@ import { evalAnim, type AnimOut } from './sectionAnims';
  * deterministic; only the internal demos (packets, ball, hop…) ride the clock.
  */
 
-export interface SectionGates {
-  origin: number[];
-  craft: number[];
-  work: number[];
-}
-
-export const createGates = (): SectionGates => ({
-  origin: [0],
-  craft: [0, 0, 0],
-  work: [0, 0, 0, 0],
-});
-
-/**
- * Panel progress → build gate: assemble as the panel scrolls in, hold while
- * it's in view, release only once the panel itself has scrolled away. Every
- * shape owns its full lifecycle, so nothing tears down mid-read — and shapes
- * accumulate naturally as their panels enter, on any layout.
- */
-const gateOf = (p: number) => Math.min(clamp01(p / 0.42), clamp01((1 - p) / 0.26));
-
-export function computeGates(j: JourneyState, g: SectionGates) {
-  g.origin[0] = gateOf(j.originShape);
-  for (let k = 0; k < 3; k++) g.craft[k] = gateOf(j.craftShapes[k]);
-  for (let k = 0; k < 4; k++) g.work[k] = gateOf(j.workShapes[k]);
-}
+// Gate math lives in journey.ts (three-free) so DOM-side reveal wiring can
+// read it too; re-exported here for the sim-side consumers.
+export { computeGates, createGates } from './journey';
+export type { SectionGates };
 
 export interface AnchorSet {
   origin: AnchorXf[];
@@ -104,16 +83,18 @@ function repelFromZones(x: number, y: number, zones: Zone[], seed: number) {
     const u = Math.max(Math.abs(dx) / zone.hw, Math.abs(dy) / zone.hh);
     if (u >= 1) continue;
     // smoothstep of the penetration — the value AND its gradient hit zero at
-    // the zone edge, so a cube wobbling across the boundary never jumps
+    // the zone edge, so a cube wobbling across the boundary never jumps.
+    // Gentle on purpose: floaters may drift under the glass (that's the
+    // point of it) — they just shouldn't crowd dead-center behind a shape.
     const f = 1 - u;
     const fs = f * f * (3 - 2 * f);
-    const k = 1 + fs * 0.9;
+    const k = 1 + fs * 0.35;
     // scale straight out from the panel center; a rare dead-center cube
     // borrows its escape direction from its own seed
     const bx = Math.abs(dx) + Math.abs(dy) < 1e-3 ? seed * 0.01 : dx;
     x = zone.cx + bx * k;
     y = zone.cy + dy * k;
-    dim = Math.min(dim, 1 - 0.45 * fs);
+    dim = Math.min(dim, 1 - 0.3 * fs);
   }
   REPEL.x = x;
   REPEL.y = y;
@@ -121,6 +102,8 @@ function repelFromZones(x: number, y: number, zones: Zone[], seed: number) {
   return REPEL;
 }
 
+/** Returns true when any mix value changed — the caller bumps the paint
+ *  version so instance colors repaint only on actual change. */
 export function writeFormation(
   voxels: VoxelSeed[],
   cast: VoxelCasting,
@@ -128,9 +111,11 @@ export function writeFormation(
   outPos: Float32Array,
   outRot: Float32Array,
   outScale: Float32Array,
+  outBack: Float32Array,
   outMixA: Float32Array,
   outMixH: Float32Array,
-) {
+): boolean {
+  let mixChanged = false;
   const w = ctx.weights;
   const secW = [w.origin, w.craft, w.work];
   const secAsg = [cast.origin, cast.craft, cast.work];
@@ -167,6 +152,10 @@ export function writeFormation(
     let py = w.letters * v.y + w.scatter * scy;
     let pz = w.letters * v.z + w.scatter * scz;
     let scl = w.letters + w.scatter;
+    // letters, constellation and atmosphere all live on the BACK layer —
+    // behind the page text, under the glass. Only the assembled share of a
+    // cube crosses to the front layer, above the panels.
+    let back = w.letters + w.scatter;
     let mixA = (w.letters + w.scatter) * orange;
     let mixH = 0;
     let loose = w.scatter;
@@ -175,13 +164,14 @@ export function writeFormation(
       const ws = secW[s];
       if (ws < 5e-4) continue;
 
-      // default: this cube is atmosphere for the section — parting around
-      // the section's panels so it never crowds an assembled shape
+      // default: this cube is atmosphere for the section — drifting UNDER
+      // the glass panes, gently parting so it never crowds a shape's center
       const rep = repelFromZones(fx, fy, secZones[s], seed);
       let ax = rep.x;
       let ay = rep.y;
       let az = fz;
       let ascl = FLOAT_SCALE * rep.dim;
+      let aback = 1; // atmosphere renders on the back layer…
       let amixA = orange;
       let amixH = 0;
       let aloose = 0.55;
@@ -202,13 +192,22 @@ export function writeFormation(
             const lz = anchor.cz + (p.z + ANIM.dz) * anchor.s;
             const cubeScl = Math.max(1e-3, (p.size * anchor.s * ANIM.scale) / VOXEL_SIZE);
             const e = backOut(A);
+            // a cube renders SPLIT across the two layers — sized, not faded —
+            // so the layer handoff must happen while the cube is still tiny
+            // or the perceived size dips mid-flight. Size + color arrive fast
+            // (quadOut), and a claimed cube surfaces through the glass at the
+            // very START of its flight: the whole assembly plays out crisp,
+            // ABOVE the cards, and only unclaimed atmosphere stays behind.
+            const sA = 1 - (1 - A) * (1 - A);
+            const cross = clamp01(A / 0.15);
             ax += (lx - ax) * e;
             ay += (ly - ay) * e;
             az += (lz - az) * e;
-            ascl += (cubeScl - ascl) * A;
-            amixA += ((p.role === 1 ? 1 : 0) - amixA) * A;
-            amixH = p.role === 2 ? A : 0;
-            aloose = 0.55 * (1 - A);
+            ascl += (cubeScl - ascl) * sA;
+            aback = 1 - cross; // …already above the glass while it flies
+            amixA += ((p.role === 1 ? 1 : 0) - amixA) * sA;
+            amixH = p.role === 2 ? sA : 0;
+            aloose = 0.55 * (1 - sA);
           }
         }
       }
@@ -217,6 +216,7 @@ export function writeFormation(
       py += ws * ay;
       pz += ws * az;
       scl += ws * ascl;
+      back += ws * ascl * aback;
       mixA += ws * amixA;
       mixH += ws * amixH;
       loose += ws * aloose;
@@ -226,6 +226,9 @@ export function writeFormation(
     outPos[i3 + 1] = py + entrance * v.sy;
     outPos[i3 + 2] = pz + entrance * v.sz;
 
+    // entrance grow-in is baked here so BOTH layers see the same size
+    const sf = 0.25 + 0.75 * clamp01(settle);
+
     // loose cubes tumble; assembled cubes sit square. Floaters also pick up
     // a slow, per-cube spin so the atmosphere never reads as frozen.
     const r = clamp01(loose + entrance) * 0.9;
@@ -234,8 +237,13 @@ export function writeFormation(
     outRot[i3 + 1] = v.ry * r + spin * 1.35;
     outRot[i3 + 2] = v.rz * r;
 
-    outScale[i] = scl;
-    outMixA[i] = mixA;
-    outMixH[i] = mixH;
+    outScale[i] = scl * sf;
+    outBack[i] = back * sf;
+    if (outMixA[i] !== mixA || outMixH[i] !== mixH) {
+      outMixA[i] = mixA;
+      outMixH[i] = mixH;
+      mixChanged = true;
+    }
   }
+  return mixChanged;
 }

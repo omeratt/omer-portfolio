@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import SectionHeading from '../components/SectionHeading';
@@ -18,6 +18,14 @@ export default function Story() {
   const voxel = hasWebGL();
   const { reduced } = useMotion();
   const homageRef = useRef<HTMLElement>(null);
+
+  // stable callback refs — a fresh closure per render would detach/reattach
+  // the anchor registration on every re-render
+  const panelRef = useCallback((el: HTMLElement | null) => {
+    homageRef.current = el;
+    registerAnchor('zone:origin-grid', el);
+  }, []);
+  const gridRef = useMemo(() => anchorRef('origin-grid'), []);
 
   // the homage panel scrubs its own build gate — the 2022 grid assembles as
   // the panel scrolls in and only dissolves once it scrolls away
@@ -78,17 +86,14 @@ export default function Story() {
             </p>
           </div>
           <figure
-            ref={(el) => {
-              homageRef.current = el;
-              registerAnchor('zone:origin-grid', el);
-            }}
-            className={styles.homage}
+            ref={panelRef}
+            className={`glass-panel ${styles.homage}`}
             data-reveal=""
             data-delay="0.15"
           >
             {voxel ? (
               /* the voxel swarm assembles the 2022 grid inside this window */
-              <div ref={anchorRef('origin-grid')} className={styles.voxelGrid} aria-hidden="true" />
+              <div ref={gridRef} className={styles.voxelGrid} aria-hidden="true" />
             ) : (
               <GridMark cell={11} tone="heritage" build className={styles.homageGrid} />
             )}
@@ -96,6 +101,7 @@ export default function Story() {
               className={styles.caption}
               data-reveal=""
               data-reveal-start="top 72%"
+              data-reveal-gate={voxel ? 'origin-grid' : undefined}
             >
               <span className="label">2022 — the first build</span>
               <ActionLink href="https://omeratt.github.io/intro/" external>

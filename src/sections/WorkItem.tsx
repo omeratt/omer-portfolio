@@ -1,4 +1,4 @@
-import { useRef, type ComponentType } from 'react';
+import { useCallback, useMemo, useRef, type ComponentType } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import ActionLink from '../components/ActionLink';
@@ -32,6 +32,17 @@ export default function WorkItem({ project, index, flip }: Props) {
   const { reduced } = useMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const Motif = MOTIFS[project.motif];
+
+  // stable callback refs — a fresh closure per render would detach/reattach
+  // the anchor registration on every re-render
+  const glassRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      panelRef.current = el;
+      registerAnchor(`zone:work-${index}`, el);
+    },
+    [index],
+  );
+  const motifRef = useMemo(() => anchorRef(`work-${index}`), [index]);
 
   // each panel scrubs its own build gate — shapes accumulate down the
   // section, each assembling as its panel scrolls into view
@@ -81,20 +92,10 @@ export default function WorkItem({ project, index, flip }: Props) {
           </div>
         </div>
         <figure className={styles.visual} data-reveal="" data-delay="0.12">
-          <div
-            ref={(el) => {
-              panelRef.current = el;
-              registerAnchor(`zone:work-${index}`, el);
-            }}
-            className={styles.panel}
-          >
+          <div ref={glassRef} className={`glass-panel ${styles.panel}`}>
             {voxel ? (
               /* the voxel window — this project's motif assembles in here */
-              <div
-                ref={anchorRef(`work-${index}`)}
-                className={styles.motifStage}
-                aria-hidden="true"
-              />
+              <div ref={motifRef} className={styles.motifStage} aria-hidden="true" />
             ) : (
               <Motif />
             )}
@@ -103,6 +104,7 @@ export default function WorkItem({ project, index, flip }: Props) {
             className={`label ${styles.proves}`}
             data-reveal=""
             data-reveal-start="top 58%"
+            data-reveal-gate={voxel ? `work-${index}` : undefined}
           >
             <span className={styles.arrow} aria-hidden="true">
               ↳
