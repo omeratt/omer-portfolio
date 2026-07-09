@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import type { VoxelSeed } from './oaGrid';
 import type { VoxelCasting } from './formations';
-import { writeFormation, settleOf, type FormationCtx } from './formation';
-import { clamp01 } from './journey';
+import { writeFormation, type FormationCtx } from './formation';
 
 export interface SimCtx extends FormationCtx {
   /** cursor on the monogram plane, in group space (null = no pointer) */
@@ -15,6 +14,8 @@ const Q = new THREE.Quaternion();
 const E = new THREE.Euler();
 const S = new THREE.Vector3();
 
+/** Returns writeFormation's mix-changed flag so the caller can bump the
+ *  shared paint version. */
 export function simFrame(
   mesh: THREE.InstancedMesh,
   voxels: VoxelSeed[],
@@ -24,10 +25,13 @@ export function simFrame(
   outPos: Float32Array,
   outRot: Float32Array,
   outScale: Float32Array,
+  outBack: Float32Array,
   outMixA: Float32Array,
   outMixH: Float32Array,
-) {
-  writeFormation(voxels, cast, ctx, outPos, outRot, outScale, outMixA, outMixH);
+): boolean {
+  const mixChanged = writeFormation(
+    voxels, cast, ctx, outPos, outRot, outScale, outBack, outMixA, outMixH,
+  );
 
   // cursor push — any coherent shape reacts, the loose cloud doesn't
   const pushable =
@@ -48,8 +52,10 @@ export function simFrame(
       }
     }
 
-    const settle = settleOf(voxels[i], ctx);
-    const s = size * outScale[i] * (0.25 + 0.75 * clamp01(settle));
+    // the back layer (letters, constellation, atmosphere — behind the page)
+    // draws this cube's floating share; the front draws only what has
+    // assembled into a shape above the glass. Entrance growth is pre-baked.
+    const s = size * Math.max(0, outScale[i] - outBack[i]);
     E.set(outRot[i3], outRot[i3 + 1], outRot[i3 + 2]);
     Q.setFromEuler(E);
     P.set(outPos[i3], outPos[i3 + 1], outPos[i3 + 2]);
@@ -58,6 +64,7 @@ export function simFrame(
     mesh.setMatrixAt(i, M);
   }
   mesh.instanceMatrix.needsUpdate = true;
+  return mixChanged;
 }
 
 /** Compose instance matrices straight from a physics state (blast mode). */

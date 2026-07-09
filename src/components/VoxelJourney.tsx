@@ -5,37 +5,25 @@ import { useGSAP } from '@gsap/react';
 import GridMark from './GridMark';
 import { useMotion } from '../motion/useMotion';
 import { journey, journeyWeights, clamp01, type JourneyState } from '../three/journey';
-import { getAnchorEl } from '../three/anchorRegistry';
 import { hasWebGL } from '../three/webgl';
 import type { BlastTrigger } from '../three/blastSim';
 import styles from './VoxelJourney.module.css';
 
 // three.js lives in its own chunk — the copy never waits for it
 const HeroCanvas = lazy(() => import('../three/HeroCanvas'));
+const UnderlayCanvas = lazy(() =>
+  import('../three/HeroCanvas').then((m) => ({ default: m.UnderlayCanvas })),
+);
 
-/**
- * Frosted-glass panes, one per shape panel. They live INSIDE the stage,
- * painted below the canvas: the glass blurs the page texture behind the
- * frame while the voxel shapes render crisply on top of it. Radii mirror
- * the DOM panels they shadow.
- */
-const GLASS_PANES = [
-  { id: 'origin-grid', radius: 24 },
-  { id: 'craft-0', radius: 20 },
-  { id: 'craft-1', radius: 20 },
-  { id: 'craft-2', radius: 20 },
-  { id: 'work-0', radius: 22 },
-  { id: 'work-1', radius: 22 },
-  { id: 'work-2', radius: 22 },
-  { id: 'work-3', radius: 22 },
-] as const;
-
-/** journey dials per chapter when reduced motion snaps between poses */
+/** journey dials per chapter when reduced motion snaps between poses.
+ *  Shape progress sits mid-hold-plateau of the build gate (see gateOf in
+ *  formation.ts) so every shape reads fully assembled. */
+const HELD = 0.74;
 const REDUCED_POSES: Record<string, Partial<JourneyState>> = {
   hero: { hero: 1 },
-  origin: { origin: 1, originShape: 0.5 },
-  craft: { craft: 1, craftShapes: [0.5, 0.5, 0.5] },
-  work: { work: 1, workShapes: [0.5, 0.5, 0.5, 0.5] },
+  origin: { origin: 1, originShape: HELD },
+  craft: { craft: 1, craftShapes: [HELD, HELD, HELD] },
+  work: { work: 1, workShapes: [HELD, HELD, HELD, HELD] },
   contact: { contact: 1 },
 };
 
@@ -49,40 +37,9 @@ export default function VoxelJourney() {
   const { reduced } = useMotion();
   const blastRef = useRef<BlastTrigger | null>(null);
   const activeRef = useRef(true);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const glassRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const webgl = useMemo(hasWebGL, []);
-
-  // the glass panes shadow their panels' rects every frame — through scroll,
-  // resize, hover lifts and the sections' drift parallax
-  useEffect(() => {
-    const layer = glassRef.current;
-    if (!webgl || !layer) return;
-    const panes = Array.from(layer.children) as HTMLElement[];
-    const sync = () => {
-      const vh = window.innerHeight;
-      for (let i = 0; i < panes.length; i++) {
-        const src = getAnchorEl(`zone:${GLASS_PANES[i].id}`);
-        const pane = panes[i];
-        if (!src || !src.isConnected) {
-          pane.style.visibility = 'hidden';
-          continue;
-        }
-        const r = src.getBoundingClientRect();
-        if (r.width < 2 || r.bottom < -40 || r.top > vh + 40) {
-          pane.style.visibility = 'hidden';
-          continue;
-        }
-        pane.style.visibility = 'visible';
-        pane.style.transform = `translate3d(${r.left}px, ${r.top}px, 0)`;
-        pane.style.width = `${r.width}px`;
-        pane.style.height = `${r.height}px`;
-      }
-    };
-    gsap.ticker.add(sync);
-    return () => gsap.ticker.remove(sync);
-  }, [webgl]);
 
   // panels advertise themselves as voxel windows (transparent surfaces)
   useEffect(() => {
@@ -108,6 +65,8 @@ export default function VoxelJourney() {
   // every shape fully assembled, every demo at rest (rule: final state, now)
   useEffect(() => {
     if (!reduced || !webgl) return;
+    // the scroll-driven fade never runs here — show the voxel layers plainly
+    rootRef.current?.style.setProperty('--fade', '1');
     const sections = ['hero', 'origin', 'craft', 'work', 'contact']
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => Boolean(el));
@@ -129,7 +88,7 @@ export default function VoxelJourney() {
           });
           Object.assign(journey, pose);
           // hero/contact keep the ghosting mask; the shape chapters don't
-          stageRef.current?.style.setProperty(
+          rootRef.current?.style.setProperty(
             '--mx',
             entry.target.id === 'hero' || entry.target.id === 'contact' ? '0' : '1',
           );
@@ -143,10 +102,18 @@ export default function VoxelJourney() {
 
   useGSAP(
     () => {
-      const stage = stageRef.current;
+      const stage = rootRef.current;
       if (reduced || !stage) return;
       const j = journey;
-      const fade = gsap.quickTo(stage, 'opacity', { duration: 0.35, ease: 'power2' });
+      // the journey fade dims ONLY the voxel canvases (via --fade). The glass
+      // surfaces live on the panels themselves — steady, never breathing
+      // with the swarm.
+      const fadeState = { v: 0 };
+      const fade = gsap.quickTo(fadeState, 'v', {
+        duration: 0.35,
+        ease: 'power2',
+        onUpdate: () => stage.style.setProperty('--fade', fadeState.v.toFixed(4)),
+      });
       const apply = () => {
         const w = journeyWeights(j);
         const portrait = window.innerHeight > window.innerWidth * 1.15;
@@ -182,12 +149,15 @@ export default function VoxelJourney() {
       // sections only write their CLAIM here (how much of the swarm they
       // own); every shape's build gate is scrubbed by its own panel trigger.
       // Claims release late and fast — panel triggers own visible teardown.
-      const lateRelease = (p: number) =>
-        Math.min(1, Math.max(0, Math.min(p / 0.24, (1 - p) / 0.13)));
+      // The release tail is a FRACTION of the chapter span, so the huge work
+      // section gets a much smaller one: with the default 0.13 its claim
+      // started decaying while the last project (04) was still mid-screen.
+      const lateRelease = (p: number, tail = 0.13) =>
+        Math.min(1, Math.max(0, Math.min(p / 0.24, (1 - p) / tail)));
       chapter('hero', 'top top', 'bottom 42%', (p) => { j.hero = 1 - p; });
       chapter('origin', 'top 78%', 'bottom 55%', (p) => { j.origin = lateRelease(p); });
       chapter('craft', 'top 80%', 'bottom 42%', (p) => { j.craft = lateRelease(p); });
-      chapter('work', 'top 80%', 'bottom 30%', (p) => { j.work = lateRelease(p); });
+      chapter('work', 'top 80%', 'bottom 12%', (p) => { j.work = lateRelease(p, 0.05); });
       chapter('contact', 'top 85%', 'top 28%', (p) => { j.contact = p; });
 
       if (import.meta.env.DEV) {
@@ -195,34 +165,39 @@ export default function VoxelJourney() {
         (window as unknown as { __oaJourney?: JourneyState }).__oaJourney = j;
       }
     },
-    { dependencies: [reduced], scope: stageRef },
+    { dependencies: [reduced], scope: rootRef },
   );
 
+  // paint order bottom → top: back stage (floaters) → page content, whose
+  // panels carry the frosted glass as their own background (it scrolls
+  // natively with them — no fixed-layer sync, no iOS jitter) → front stage
+  // (letters + assembled shapes, crisp above the glass).
+  //
+  // The FRONT canvas comes first in the tree on purpose: R3F renders roots
+  // in mount order, so the sim (front) computes each frame's buffers before
+  // the back canvas composes them — same-frame coherence, no 1-frame lag
+  // between the layers. Stacking is unaffected (explicit z-indexes).
   return (
-    <div ref={stageRef} className={styles.stage} data-loaded={loaded || undefined} aria-hidden="true">
-      <GridMark cell={22} tone="ghost" className={styles.ghost} />
+    <div ref={rootRef} className={styles.root} data-loaded={loaded || undefined} aria-hidden="true">
       {webgl && (
-        <div ref={glassRef} className={styles.glassLayer}>
-          {GLASS_PANES.map((pane) => (
-            <div
-              key={pane.id}
-              className={styles.glass}
-              style={{ borderRadius: pane.radius, visibility: 'hidden' }}
-            />
-          ))}
+        <div className={styles.stageFront}>
+          <Suspense fallback={null}>
+            <div className={styles.canvas}>
+              <HeroCanvas blastRef={blastRef} activeRef={activeRef} />
+            </div>
+          </Suspense>
         </div>
       )}
-      {webgl && (
-        <Suspense fallback={null}>
-          <div className={styles.canvas}>
-            <HeroCanvas
-              blastRef={blastRef}
-              activeRef={activeRef}
-              onReady={() => setLoaded(true)}
-            />
-          </div>
-        </Suspense>
-      )}
+      <div className={styles.stage}>
+        <GridMark cell={22} tone="ghost" className={styles.ghost} />
+        {webgl && (
+          <Suspense fallback={null}>
+            <div className={styles.canvasBack}>
+              <UnderlayCanvas activeRef={activeRef} onReady={() => setLoaded(true)} />
+            </div>
+          </Suspense>
+        )}
+      </div>
     </div>
   );
 }

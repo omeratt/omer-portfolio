@@ -47,6 +47,22 @@ input {
   color: inherit;
 }
 
+/* Translucent voxel panels — the pane is the panel's OWN background, so it
+   scrolls natively with the content. Deliberately NO backdrop-filter: iOS
+   re-samples a blurred backdrop a beat behind the scroll, which reads as
+   cubes jittering inside the frame. A tint + sheen gives the glassy read;
+   the under-panel floater canvas shows through, softly dimmed. */
+[data-voxel-stage] .glass-panel {
+  background:
+    linear-gradient(
+      155deg,
+      var(--glass-sheen),
+      var(--glass-sheen-soft) 58%,
+      transparent 92%
+    ),
+    var(--glass-tint);
+}
+
 button {
   background: none;
   border: 0;

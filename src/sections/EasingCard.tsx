@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
@@ -54,15 +54,30 @@ function VoxelCard({ curve, index, delay }: Props) {
   const { reduced } = useMotion();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // each card scrubs its own build gate; a slight per-index offset keeps the
-  // three graphs building one after another even when the cards share a row
+  // stable callback refs — a fresh closure per render would detach/reattach
+  // the anchor registration on every re-render
+  const cardRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      rootRef.current = el;
+      registerAnchor(`zone:craft-${index}`, el);
+    },
+    [index],
+  );
+  const stageRef = useMemo(() => anchorRef(id), [id]);
+
+  // each card scrubs its own build gate. On the desktop row a slight
+  // per-index start offset sequences the three graphs; once the cards stack
+  // (≤880px, matching Craft.module.css) the offset would only make later
+  // cards finish too early in their own journey — there the scroll order
+  // already sequences them naturally.
   useGSAP(
     () => {
       const el = rootRef.current;
       if (reduced || !el) return;
+      const stacked = window.matchMedia('(max-width: 880px)').matches;
       ScrollTrigger.create({
         trigger: el,
-        start: `top ${94 - index * 8}%`,
+        start: `top ${stacked ? 94 : 94 - index * 8}%`,
         end: 'bottom 12%',
         scrub: true,
         onUpdate: (st) => { journey.craftShapes[index] = st.progress; },
@@ -74,11 +89,8 @@ function VoxelCard({ curve, index, delay }: Props) {
 
   return (
     <div
-      ref={(el) => {
-        rootRef.current = el;
-        registerAnchor(`zone:${id}`, el);
-      }}
-      className={styles.card}
+      ref={cardRef}
+      className={`glass-panel ${styles.card}`}
       data-reveal=""
       data-delay={String(delay)}
       onPointerEnter={replay}
@@ -95,11 +107,11 @@ function VoxelCard({ curve, index, delay }: Props) {
         </button>
       </div>
       {/* the voxel window — graph, ball and slider assemble in here */}
-      <div ref={anchorRef(id)} className={styles.stagebox} aria-hidden="true" />
-      <p className={styles.code} data-reveal="" data-reveal-start="top 62%">
+      <div ref={stageRef} className={styles.stagebox} aria-hidden="true" />
+      <p className={styles.code} data-reveal="" data-reveal-gate={id}>
         {curve.code}
       </p>
-      <p className={styles.blurb} data-reveal="" data-reveal-start="top 62%">
+      <p className={styles.blurb} data-reveal="" data-reveal-gate={id} data-delay="0.12">
         {curve.blurb}
       </p>
     </div>

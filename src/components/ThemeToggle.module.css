@@ -108,3 +108,16 @@
     transform: translateY(0);
   }
 }
+
+/* small phones: a narrower fence, same hop — keeps the header row from
+   overflowing the viewport (which clips the toggle) */
+@media (max-width: 420px) {
+  .toggle {
+    width: 52px;
+    height: 28px;
+  }
+
+  .toggle[aria-checked='true'] .knobTrack {
+    transform: translateX(24px);
+  }
+}

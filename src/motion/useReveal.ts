@@ -1,15 +1,23 @@
 import { useRef } from 'react';
 import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { useMotion } from './useMotion';
+import { shapeGate } from '../three/journey';
 
 const TRIG = { start: 'top 87%', once: true } as const;
+
+/** a shape's caption enters as the last voxels land */
+const GATE_DONE = 0.9;
 
 /**
  * The site-wide reveal grammar. Sections opt elements in with data attributes:
  *   data-reveal          fade-up block (optional data-delay="0.15")
  *   data-reveal-start    ScrollTrigger start override (e.g. "top 55%") — used
- *                        to hold text back until its voxel shape has built
+ *                        as the fallback when the voxel stage is absent
+ *   data-reveal-gate     shape id ('craft-1', 'work-3', 'origin-grid') — the
+ *                        reveal fires when that shape's build gate completes,
+ *                        so text lands in sync with its cubes, on any layout
  *   data-lines-root      children [data-line] mask-reveal, [data-dot] dribbles in
  *   data-rule            hairline draws left → right
  *   data-grid-build      child spans assemble in random stagger (the 2022 grid)
@@ -35,6 +43,7 @@ export function useReveal<T extends HTMLElement = HTMLElement>() {
       }
 
       root.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
+        if (el.dataset.revealGate !== undefined) return; // synced to its shape below
         gsap.fromTo(
           el,
           { y: 26, autoAlpha: 0 },
@@ -47,6 +56,37 @@ export function useReveal<T extends HTMLElement = HTMLElement>() {
             scrollTrigger: { trigger: el, ...TRIG, start: el.dataset.revealStart ?? TRIG.start },
           },
         );
+      });
+
+      // gate-synced reveals: poll the shape's build gate on scroll (the gate
+      // is scroll-driven, so scroll updates are exactly when it can change)
+      // and fire the standard fade-up the moment the shape finishes building
+      root.querySelectorAll<HTMLElement>('[data-reveal-gate]').forEach((el) => {
+        const id = el.dataset.revealGate!;
+        gsap.set(el, { y: 26, autoAlpha: 0 });
+        let st: ScrollTrigger | undefined;
+        let fired = false;
+        // onRefresh can fire synchronously inside create() — guard st/fired
+        const fire = () => {
+          if (fired || shapeGate(id) < GATE_DONE) return;
+          fired = true;
+          st?.kill();
+          gsap.to(el, {
+            y: 0,
+            autoAlpha: 1,
+            duration: 1,
+            ease: 'snap',
+            delay: Number(el.dataset.delay ?? 0),
+          });
+        };
+        st = ScrollTrigger.create({
+          trigger: el,
+          start: 'top bottom',
+          end: 'bottom top',
+          onUpdate: fire,
+          onRefresh: fire,
+        });
+        if (fired) st.kill();
       });
 
       root.querySelectorAll<HTMLElement>('[data-lines-root]').forEach((head) => {

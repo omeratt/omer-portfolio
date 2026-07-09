@@ -37,7 +37,23 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   // Lenis drives window scroll; GSAP's ticker drives Lenis.
   useEffect(() => {
     if (reduced) return;
-    const instance = new Lenis({ lerp: 0.115, smoothWheel: true });
+    // syncTouch routes touch scrolling through the rAF loop instead of the
+    // compositor thread, so the natively-scrolling panels and the fixed voxel
+    // canvases (whose anchors are read on the main thread) move in the SAME
+    // frame — without it, iOS shows shapes trailing a beat behind their
+    // cards. It changes touch feel (lerped inertia, slight rubber-band);
+    // feel-test toggle: load the page with ?native-touch to turn it off.
+    const syncTouch = !new URLSearchParams(window.location.search).has('native-touch');
+    const instance = new Lenis({
+      lerp: 0.115,
+      smoothWheel: true,
+      syncTouch,
+      // syncTouch swallows every touch gesture before the browser sees it —
+      // returning false here (touch, pulling down, already at the very top)
+      // exits BEFORE Lenis preventDefaults, so iOS pull-to-refresh survives
+      virtualScroll: (e) =>
+        !(e.event.type.includes('touch') && e.deltaY < 0 && window.scrollY <= 1),
+    });
     const raf = (time: number) => instance.raf(time * 1000);
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
